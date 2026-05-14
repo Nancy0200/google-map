@@ -1,90 +1,88 @@
 # 流程圖設計文件 — Road Bulletin（即時路況留言板）
 
-> 版本：v1.0　｜　撰寫日期：2026-05-14　｜　語言：繁體中文
+> 版本：v1.1　｜　更新日期：2026-05-14　｜　語言：繁體中文
 
 ---
 
 ## 1. 使用者流程圖（User Flow）
 
-描述三種角色（主駕駛、副駕駛、一般使用者）進入系統後的完整操作路徑。
+所有操作在單一頁面內完成，不涉及頁面切換。
 
 ```mermaid
 flowchart LR
-    Start([使用者開啟網頁]) --> Home[首頁 / 留言板\n顯示即時路況留言]
+    Start([使用者開啟網頁]) --> Load["載入單一頁面 /\n左側導航畫面 + 右側留言板"]
+    Load --> WSConnect["建立 WebSocket 連線\n開始接收即時留言"]
 
-    Home --> RoleChoice{選擇使用模式}
+    WSConnect --> View["瀏覽即時留言板\n（右側）"]
+    WSConnect --> DanmakuPlay["彈幕自動滾動\n（左側導航畫面）"]
 
-    RoleChoice -->|我是主駕駛| Driver[主駕駛快速回報頁\n/driver]
-    RoleChoice -->|我是副駕駛| Passenger[副駕駛互動頁\n/passenger]
-    RoleChoice -->|查看歷史| History[留言歷史記錄頁\n/history]
+    View --> ManualInput["副駕駛手動輸入留言"]
+    ManualInput --> Validate{內容驗證\n長度 ≤ 100 字}
+    Validate -->|失敗| ErrorMsg["顯示錯誤提示"]
+    Validate -->|通過| EmitMsg["emit post_message\n→ 廣播給所有用戶"]
+    EmitMsg --> UpdateAll["所有用戶留言板 + 彈幕同步更新"]
 
-    %% 主駕駛流程
-    Driver --> QuickBtn[點擊快速回報按鈕]
-    QuickBtn --> Cooldown{是否在冷卻時間內？}
-    Cooldown -->|是| BtnDisabled[按鈕變灰，顯示倒數]
-    Cooldown -->|否| PostAPI[POST /api/post]
-    PostAPI --> SaveDB[(儲存至 SQLite)]
-    SaveDB --> Broadcast[SocketIO 廣播給所有用戶]
-    Broadcast --> UpdateAll[所有開啟的頁面即時更新留言]
+    DanmakuPlay --> QuickBtn["主駕駛點擊\n主選單按鈕 ◉"]
+    QuickBtn --> MenuOpen["展開選項面板"]
+    MenuOpen --> SpeedSelect["選擇速度燈號\n🔴 / 🟡 / 🟢"]
+    MenuOpen --> AccidentBtn["點擊 🚗💥 前方車禍"]
+    MenuOpen --> DebrisBtn["點擊 📦⚠️ 前方掉落物"]
 
-    %% 副駕駛流程
-    Passenger --> DanmakuView[觀看彈幕路況資訊流]
-    Passenger --> ManualInput[手動輸入自訂留言]
-    ManualInput --> Validate{內容驗證\n長度 ≤ 100 字\nXSS 過濾}
-    Validate -->|驗證失敗| ErrorMsg[顯示錯誤提示]
-    Validate -->|驗證通過| PostAPI
+    SpeedSelect --> CooldownCheck{冷卻時間\n檢查}
+    AccidentBtn --> CooldownCheck
+    DebrisBtn --> CooldownCheck
 
-    %% 歷史記錄流程
-    History --> FilterChoice{選擇篩選條件}
-    FilterChoice -->|全部| ShowAll[顯示近 24 小時留言]
-    FilterChoice -->|依類型| FilterResult[篩選：塞車/施工/突發/測速]
-    ShowAll --> HistoryList[顯示留言歷史列表]
-    FilterResult --> HistoryList
+    CooldownCheck -->|冷卻中| BtnDisabled["按鈕禁用\n顯示倒數計時"]
+    CooldownCheck -->|可發送| EmitMsg
 
-    %% 首頁留言板
-    Home --> AutoRefresh[WebSocket 自動接收新留言]
-    AutoRefresh --> Home
+    QuickBtn --> PinnedSlot["直接點擊釘選格\n📌 📌 📌"]
+    PinnedSlot --> CooldownCheck
+
+    MenuOpen --> LongPress["長按選項\n設定釘選"]
+    LongPress --> SavePinned["儲存至 localStorage"]
+    SavePinned --> PinnedSlot
 ```
 
 ---
 
 ## 2. 系統序列圖（Sequence Diagram）
 
-### 2.1 快速回報留言（主駕駛）
-
-描述主駕駛點擊快速按鈕，留言即時廣播給所有在線用戶的完整流程。
+### 2.1 主駕駛快速回報（主選單按鈕）
 
 ```mermaid
 sequenceDiagram
     actor Driver as 🚗 主駕駛
-    participant Browser as 瀏覽器\n(driver.html)
-    participant Flask as Flask Route\n(api.py)
+    participant Browser as 瀏覽器（index.html）
+    participant Flask as Flask-SocketIO（api.py）
     participant Model as Message Model
     participant DB as SQLite
-    participant SocketIO as Flask-SocketIO
     participant Others as 其他在線用戶
 
-    Driver->>Browser: 點擊快速回報按鈕（e.g. 🚗 前方塞車）
-    Browser->>Browser: 檢查冷卻時間（localStorage）
+    Driver->>Browser: 點擊 ◉ 主選單按鈕
+    Browser->>Browser: quickbtn.js 展開選項面板
+
+    Driver->>Browser: 點擊選項（e.g. 🔴 車速 < 30）
+    Browser->>Browser: speed.js 確認選擇
+    Browser->>Browser: cooldown.js 檢查 localStorage 冷卻狀態
+
     alt 冷卻時間未到
-        Browser-->>Driver: 顯示倒數計時，按鈕禁用
+        Browser-->>Driver: 按鈕禁用，顯示倒數秒數
     else 可以發送
-        Browser->>Flask: POST /api/post\n{content, role, category}
+        Browser->>Flask: emit('post_message', {content, category, speed_level})
         Flask->>Flask: XSS 過濾 & 長度驗證
-        Flask->>Flask: 後端冷卻次數檢查（IP + 時間窗口）
-        alt 超過發送限制
-            Flask-->>Browser: 429 Too Many Requests
-            Browser-->>Driver: 顯示「發送過於頻繁」提示
+        Flask->>Flask: 後端 IP 冷卻次數檢查
+        alt 超過頻率限制
+            Flask-->>Browser: error 事件（發送過於頻繁）
         else 通過驗證
-            Flask->>Model: create_message(content, role, category)
+            Flask->>Model: create_message(content, category, speed_level)
             Model->>DB: INSERT INTO messages
             DB-->>Model: 新增成功，回傳 id
             Model-->>Flask: message 物件
-            Flask->>SocketIO: emit('new_message', message)
-            SocketIO-->>Browser: broadcast new_message
-            SocketIO-->>Others: broadcast new_message
-            Browser-->>Driver: 留言板即時更新
-            Others-->>Others: 留言板即時更新
+            Flask->>Browser: broadcast('new_message', message)
+            Flask->>Others: broadcast('new_message', message)
+            Browser->>Browser: 更新留言板 DOM
+            Browser->>Browser: danmaku.js 觸發彈幕動畫
+            Others->>Others: 更新留言板 DOM + 彈幕
         end
     end
 ```
@@ -94,108 +92,110 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     actor Passenger as 👤 副駕駛
-    participant Browser as 瀏覽器\n(passenger.html)
-    participant Flask as Flask Route\n(api.py)
+    participant Browser as 瀏覽器（index.html）
+    participant Flask as Flask-SocketIO（api.py）
     participant Model as Message Model
     participant DB as SQLite
-    participant SocketIO as Flask-SocketIO
 
-    Passenger->>Browser: 在輸入框填寫自訂路況內容
-    Passenger->>Browser: 點擊「送出」按鈕
-    Browser->>Browser: 前端驗證（長度 ≤ 100 字）
+    Passenger->>Browser: 在右側留言板輸入框填寫內容
+    Passenger->>Browser: 點擊「送出」或按 Enter
+    Browser->>Browser: 前端驗證（長度 ≤ 100 字、非空白）
+
     alt 驗證失敗
-        Browser-->>Passenger: 顯示錯誤訊息
+        Browser-->>Passenger: 輸入框紅框 + 錯誤提示文字
     else 驗證通過
-        Browser->>Flask: POST /api/post\n{content, role: "passenger", category}
-        Flask->>Model: create_message(...)
+        Browser->>Flask: emit('post_message', {content, category: 'other'})
+        Flask->>Model: create_message(content, 'other', null)
         Model->>DB: INSERT INTO messages
         DB-->>Model: 成功
         Model-->>Flask: message 物件
-        Flask->>SocketIO: emit('new_message', message)
-        SocketIO-->>Browser: 新留言推送
-        Browser-->>Passenger: 彈幕動畫顯示新留言
+        Flask->>Browser: broadcast('new_message', message)
+        Browser->>Browser: 留言板新增訊息（動畫滑入）
+        Browser->>Browser: danmaku.js 觸發彈幕
+        Browser-->>Passenger: 輸入框清空，可繼續輸入
     end
 ```
 
-### 2.3 查詢留言歷史（一般使用者）
+### 2.3 釘選按鈕設定流程
 
 ```mermaid
 sequenceDiagram
-    actor User as 👤 一般使用者
-    participant Browser as 瀏覽器\n(history.html)
-    participant Flask as Flask Route\n(main.py)
-    participant Model as Message Model
-    participant DB as SQLite
+    actor Driver as 🚗 主駕駛
+    participant Browser as 瀏覽器（index.html）
+    participant LS as localStorage
 
-    User->>Browser: 開啟留言歷史頁 /history
-    Browser->>Flask: GET /history?category=all
-    Flask->>Model: get_messages(hours=24, category=None)
-    Model->>DB: SELECT * FROM messages\nWHERE created_at >= NOW() - 24h\nORDER BY created_at DESC
-    DB-->>Model: 留言列表
-    Model-->>Flask: messages[]
-    Flask-->>Browser: render_template('history.html', messages=messages)
-    Browser-->>User: 顯示歷史留言列表
+    Driver->>Browser: 展開主選單
+    Driver->>Browser: 長按某個選項（e.g. 🔴 紅燈）
 
-    User->>Browser: 選擇篩選條件（e.g. 塞車）
-    Browser->>Flask: GET /history?category=traffic
-    Flask->>Model: get_messages(hours=24, category='traffic')
-    Model->>DB: SELECT * FROM messages\nWHERE category = 'traffic'\nAND created_at >= NOW() - 24h
-    DB-->>Model: 篩選結果
-    Model-->>Flask: filtered_messages[]
-    Flask-->>Browser: render_template('history.html', messages=filtered_messages)
-    Browser-->>User: 顯示篩選後留言列表
+    Browser->>Browser: pinned.js 顯示「釘選至第幾格？」提示
+    Driver->>Browser: 選擇釘選格位（1 / 2 / 3）
+
+    Browser->>LS: 寫入 pinnedBtn[slot] = {icon, content, category}
+    LS-->>Browser: 儲存成功
+    Browser->>Browser: 更新釘選格按鈕顯示
+    Browser-->>Driver: 釘選格顯示對應圖示
+
+    Note over Driver,Browser: 之後可直接點擊釘選格快速發送，無需展開主選單
 ```
 
-### 2.4 WebSocket 連線建立（首頁 / 副駕駛頁）
+### 2.4 WebSocket 連線建立
 
 ```mermaid
 sequenceDiagram
     participant Browser as 瀏覽器
     participant SocketIO as Flask-SocketIO
 
-    Browser->>SocketIO: connect（開啟 WebSocket 連線）
+    Browser->>SocketIO: connect（頁面載入時自動建立）
     SocketIO-->>Browser: connected 確認
+    Browser->>SocketIO: emit('request_history')
+    SocketIO-->>Browser: 回傳最近 N 則留言（初始化留言板）
 
-    Note over Browser,SocketIO: 等待新留言廣播...
+    loop 有新留言時
+        SocketIO-->>Browser: emit('new_message', data)
+        Browser->>Browser: 更新留言板 DOM
+        Browser->>Browser: danmaku.js 產生新彈幕
+    end
 
-    SocketIO-->>Browser: emit('new_message', data)
-    Browser->>Browser: 動態新增留言至 DOM
-    Browser->>Browser: 觸發彈幕動畫（danmaku.js）
-
-    Browser->>SocketIO: disconnect（離開頁面）
-    SocketIO-->>SocketIO: 移除連線
+    Browser->>SocketIO: disconnect（離開頁面時）
 ```
 
 ---
 
 ## 3. 功能清單對照表
 
-| 功能 | 頁面 / 路徑 | HTTP 方法 | 說明 |
-|------|------------|-----------|------|
-| 瀏覽即時留言板 | `/` | GET | 首頁顯示最新路況留言，WebSocket 自動更新 |
-| 主駕駛快速回報 | `/driver` | GET | 一鍵快速回報頁面，顯示預設按鈕 |
-| 副駕駛互動頁 | `/passenger` | GET | 手動輸入留言 + 彈幕動畫頁面 |
-| 留言歷史記錄 | `/history` | GET | 顯示近 24 小時留言，支援類型篩選 |
-| 新增留言 API | `/api/post` | POST | 接收留言內容，儲存 DB 並廣播 |
-| 取得留言列表 API | `/api/messages` | GET | 回傳 JSON 格式留言列表（含篩選參數） |
+| 功能 | 路徑 | HTTP 方法 / 事件 | 說明 |
+|------|------|-----------------|------|
+| 載入主頁面 | `/` | GET | 唯一頁面，含導航 + 留言板 + 快速按鈕 |
+| 新增留言 | `/api/post` | POST | REST 備用端點（主要走 SocketIO） |
+| 取得留言列表 | `/api/messages` | GET | 回傳 JSON，支援 `?category=` 篩選 |
+| 取得釘選設定 | `/api/pinned` | GET | 回傳使用者釘選按鈕設定 |
+| 更新釘選設定 | `/api/pinned` | POST | 更新釘選按鈕配置 |
+| 發送留言 | `post_message` | SocketIO emit | 用戶發送留言觸發廣播 |
+| 接收留言 | `new_message` | SocketIO broadcast | 伺服器推播新留言給所有用戶 |
+| 請求歷史 | `request_history` | SocketIO emit | 頁面載入時取得初始留言 |
 
 ---
 
-## 4. 頁面轉換關係
+## 4. 單頁元件狀態流
 
 ```mermaid
 flowchart TD
-    Index["🏠 首頁 /\n（即時留言板）"]
-    Driver["🚗 主駕駛頁 /driver\n（快速回報）"]
-    Passenger["👤 副駕駛頁 /passenger\n（彈幕 + 手動輸入）"]
-    History["📋 歷史記錄頁 /history\n（查詢 + 篩選）"]
+    PageLoad["頁面載入"] --> InitSocket["socket.js\n建立 WebSocket"]
+    PageLoad --> InitDanmaku["danmaku.js\n初始化彈幕層"]
+    PageLoad --> InitQuickBtn["quickbtn.js\n綁定快速按鈕事件"]
+    PageLoad --> InitPinned["pinned.js\n從 localStorage 讀取釘選"]
 
-    Index <-->|導覽列切換| Driver
-    Index <-->|導覽列切換| Passenger
-    Index <-->|導覽列切換| History
-    Driver <-->|導覽列切換| Passenger
-    Driver <-->|導覽列切換| History
-    Passenger <-->|導覽列切換| History
+    InitSocket --> ReceiveMsg["接收 new_message"]
+    ReceiveMsg --> UpdateBoard["更新留言板"]
+    ReceiveMsg --> FireDanmaku["發射彈幕動畫"]
+
+    InitQuickBtn --> MenuToggle["主選單展開 / 收合"]
+    MenuToggle --> SelectOption["選擇路況選項"]
+    SelectOption --> SendMsg["發送留言（emit）"]
+
+    InitPinned --> ShowPinned["顯示釘選格按鈕"]
+    ShowPinned --> PinnedClick["點擊釘選格"]
+    PinnedClick --> SendMsg
 ```
 
 ---
