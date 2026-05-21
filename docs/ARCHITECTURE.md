@@ -1,6 +1,6 @@
-# 系統架構設計文件 — Road Bulletin（即時路況留言板）
+# ARCHITECTURE — 即時路況留言板（Road Bulletin）
 
-> 版本：v1.1　｜　更新日期：2026-05-14　｜　語言：繁體中文
+> 版本：v1.0　｜　建立日期：2026-05-17　｜　語言：繁體中文
 
 ---
 
@@ -10,20 +10,22 @@
 
 | 技術 | 版本建議 | 選用原因 |
 |------|----------|----------|
-| **Python + Flask** | Python 3.11+、Flask 3.x | 輕量級框架，適合中小型專案，路由與模板整合方便 |
-| **Jinja2** | 隨 Flask 內建 | Flask 官方模板引擎，直接在 HTML 內嵌入變數與邏輯 |
-| **SQLite** | 隨 Python 內建 | 零設定、單一檔案資料庫，適合本地開發與 MVP 階段 |
-| **Flask-SocketIO** | 5.x | 提供 WebSocket 雙向通訊，實現留言即時推送與彈幕同步 |
-| **Vanilla JS + CSS** | ES6+ | 無需額外框架，彈幕 / 快速按鈕動畫以純 CSS 實作 |
-| **模擬地圖背景** | CSS | MVP 階段以深色格線地圖取代真實地圖，無需 API Key |
+| **Python** | 3.10+ | 簡潔易讀，適合快速開發原型 |
+| **Flask** | 3.x | 輕量級 Web 框架，路由靈活，適合小型專案 |
+| **Flask-SocketIO** | 5.x | 提供 WebSocket 支援，實現即時留言推送 |
+| **Jinja2** | 內建於 Flask | 伺服器端模板引擎，直接渲染 HTML，無需前後端分離 |
+| **SQLite** | 內建於 Python | 零設定、檔案型資料庫，適合單機或小規模部署 |
+| **HTML + CSS + Vanilla JS** | — | 無額外框架依賴，配合 Socket.IO client 即可完成互動 |
 
 ### 1.2 Flask MVC 模式說明
 
-| 層次 | 對應元件 | 職責 |
-|------|----------|------|
-| **Model** | `app/models/` | 定義資料表結構、負責與 SQLite 的讀寫操作 |
-| **View** | `app/templates/` | Jinja2 HTML 模板，渲染單一頁面給使用者 |
-| **Controller** | `app/routes/` | Flask 路由，處理 HTTP / SocketIO 請求、呼叫 Model、交給 View 渲染 |
+本專案採用 **MVC（Model-View-Controller）** 架構：
+
+| 層次 | 資料夾 / 檔案 | 職責 |
+|------|---------------|------|
+| **Model** | `app/models/` | 定義資料表結構、資料庫 CRUD 操作 |
+| **View** | `app/templates/` | Jinja2 HTML 模板，負責頁面呈現 |
+| **Controller** | `app/routes/` | Flask 路由，處理 HTTP 請求與 WebSocket 事件，協調 Model 與 View |
 
 ---
 
