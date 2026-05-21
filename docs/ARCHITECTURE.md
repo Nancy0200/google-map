@@ -32,175 +32,223 @@
 ## 2. 專案資料夾結構
 
 ```
-google-map/
+road-bulletin/                  ← 專案根目錄
 │
-├── app/                        ← 應用程式主套件
-│   ├── __init__.py             ← 建立 Flask app 與 SocketIO 實例
+├── app/                        ← 主應用程式套件
+│   ├── __init__.py             ← Flask app 工廠函式，初始化 SocketIO、DB
 │   │
-│   ├── models/                 ← Model 層（資料庫模型）
+│   ├── models/                 ← Model 層：資料庫模型
 │   │   ├── __init__.py
-│   │   └── message.py          ← Message 資料表定義與查詢方法
+│   │   └── message.py          ← Message 資料表定義（留言模型）
 │   │
-│   ├── routes/                 ← Controller 層（Flask 路由）
+│   ├── routes/                 ← Controller 層：Flask 路由
 │   │   ├── __init__.py
-│   │   ├── main.py             ← 首頁、歷史頁路由
-│   │   ├── driver.py           ← 主駕駛快速回報頁路由
-│   │   ├── passenger.py        ← 副駕駛互動頁路由
-│   │   └── api.py              ← REST API 路由（/api/post、/api/messages）
+│   │   ├── main.py             ← 主頁面路由 `/`
+│   │   └── api.py              ← REST API + SocketIO 事件處理
+│   │                              /api/post、/api/messages、/api/pinned
 │   │
-│   ├── templates/              ← View 層（Jinja2 HTML 模板）
-│   │   ├── base.html           ← 共用基礎模板（導覽列、樣式引入）
-│   │   ├── index.html          ← 首頁 / 留言板
-│   │   ├── driver.html         ← 主駕駛快速回報頁
-│   │   ├── passenger.html      ← 副駕駛互動頁（含彈幕）
-│   │   └── history.html        ← 留言歷史記錄頁
+│   ├── templates/              ← View 層：Jinja2 HTML 模板
+│   │   └── index.html          ← 唯一頁面（左右分割佈局）
 │   │
 │   └── static/                 ← 靜態資源
 │       ├── css/
-│       │   └── style.css       ← 全域樣式（含彈幕動畫）
+│       │   ├── style.css       ← 全域樣式（含左右分割佈局）
+│       │   ├── danmaku.css     ← 彈幕動畫樣式
+│       │   └── quickbtn.css    ← 快速按鈕 + 展開動畫樣式
 │       └── js/
-│           ├── socket.js       ← Socket.IO 客戶端連線邏輯
-│           ├── danmaku.js      ← 彈幕動畫控制
-│           └── cooldown.js     ← 快速回報冷卻時間計時器
+│           ├── socket.js       ← SocketIO 連線與事件處理
+│           ├── danmaku.js      ← 彈幕產生與動畫邏輯
+│           ├── quickbtn.js     ← 主選單展開 / 收合邏輯
+│           ├── pinned.js       ← 釘選按鈕管理（localStorage）
+│           └── speed.js        ← 速度燈號狀態管理（手動切換）
 │
-├── instance/
-│   └── database.db             ← SQLite 資料庫檔案（自動生成）
+├── instance/                   ← 執行期資料（不放入版本控制）
+│   └── database.db             ← SQLite 資料庫檔案
 │
 ├── docs/                       ← 文件資料夾
 │   ├── PRD.md                  ← 產品需求文件
-│   └── ARCHITECTURE.md         ← 本架構文件
+│   ├── ARCHITECTURE.md         ← 本架構文件
+│   └── FLOWCHART.md            ← 流程圖文件
 │
-├── app.py                      ← 應用程式入口（啟動 Flask + SocketIO）
+├── app.py                      ← 應用程式入口，啟動 Flask + SocketIO
 ├── config.py                   ← 設定檔（資料庫路徑、Secret Key 等）
-├── requirements.txt            ← Python 依賴套件列表
-└── README.md                   ← 專案說明
+├── requirements.txt            ← Python 相依套件清單
+└── .gitignore                  ← Git 忽略清單（instance/、__pycache__/ 等）
 ```
 
 ---
 
-## 3. 元件關係圖
+## 3. 頁面佈局設計
 
-### 3.1 整體架構流程
+### 3.1 單頁分割佈局
 
-```mermaid
-graph TD
-    Browser["🌐 瀏覽器（Browser）"]
-    SocketIO_Client["📡 Socket.IO Client JS"]
-    FlaskRoute["🐍 Flask Route / Controller"]
-    SocketIO_Server["⚡ Flask-SocketIO Server"]
-    Model["📦 Model（message.py）"]
-    SQLite["🗄️ SQLite Database"]
-    Jinja2["📄 Jinja2 Template"]
-
-    Browser -->|"HTTP Request (GET/POST)"| FlaskRoute
-    Browser -->|"WebSocket 連線"| SocketIO_Server
-    SocketIO_Client -->|"emit 事件"| SocketIO_Server
-
-    FlaskRoute -->|"查詢 / 寫入資料"| Model
-    SocketIO_Server -->|"查詢 / 寫入資料"| Model
-    Model -->|"SQL 操作"| SQLite
-    SQLite -->|"回傳資料"| Model
-    Model -->|"回傳結果"| FlaskRoute
-
-    FlaskRoute -->|"傳入資料"| Jinja2
-    Jinja2 -->|"渲染 HTML"| Browser
-
-    SocketIO_Server -->|"broadcast 新留言"| SocketIO_Client
-    SocketIO_Client -->|"更新留言板 DOM"| Browser
+```
+┌─────────────────────────────────────────────────────────┐
+│                                                         │
+│   ◀─────────── 導航畫面（75vw）────────────▶│◀─25vw─▶ │
+│                                              │          │
+│   深色模擬地圖（CSS grid 格線）              │ 留言板   │
+│                                              │          │
+│   彈幕訊息橫向滾動覆蓋                       │ 社群式   │
+│   ~~前方塞車，請注意！~~                     │ 留言串   │
+│   ~~前方有車禍~~                             │          │
+│                                              │ 輸入框   │
+│   ◉ 主選單   [📌][📌][📌]                   │          │
+└──────────────────────────────────────────────┴──────────┘
 ```
 
-### 3.2 留言發送流程
+### 3.2 快速按鈕佈局（左下角）
 
-```mermaid
-sequenceDiagram
-    participant 使用者 as 使用者（Browser）
-    participant JS as Socket.IO Client
-    participant Server as Flask-SocketIO Server
-    participant DB as SQLite
-
-    使用者->>JS: 點擊發送 / 快速回報按鈕
-    JS->>Server: emit('new_message', {content, role, type})
-    Server->>DB: INSERT INTO messages (...)
-    DB-->>Server: 成功
-    Server->>JS: broadcast emit('receive_message', {...})
-    JS->>使用者: 更新留言板 + 觸發彈幕動畫
 ```
-
-### 3.3 頁面與路由對應
-
-```mermaid
-graph LR
-    subgraph 頁面路由
-        R1["/ → index.html<br/>即時留言板"]
-        R2["/driver → driver.html<br/>主駕駛快速回報"]
-        R3["/passenger → passenger.html<br/>副駕駛互動"]
-        R4["/history → history.html<br/>留言歷史"]
-    end
-
-    subgraph API
-        A1["/api/post POST<br/>新增留言"]
-        A2["/api/messages GET<br/>取得留言列表"]
-    end
-
-    subgraph WebSocket 事件
-        W1["new_message（客戶端 → 伺服器）"]
-        W2["receive_message（伺服器 → 所有客戶端）"]
-    end
+  [📌 釘選3]  [📌 釘選2]  [📌 釘選1]  ◉ 主選單
+                                         ↑ 點擊展開
+                              ┌──────────────────┐
+                              │ 🔴 車速 < 30     │
+                              │ 🟡 車速 30–60    │
+                              │ 🟢 車速 > 60     │
+                              │ 🚗💥 前方車禍    │
+                              │ 📦⚠️ 前方掉落物  │
+                              └──────────────────┘
 ```
 
 ---
 
-## 4. 資料庫設計（概覽）
+## 4. 元件關係圖
 
-### messages 資料表
+### 4.1 HTTP 請求流程
 
-| 欄位名稱 | 資料類型 | 說明 |
-|----------|----------|------|
+```mermaid
+flowchart LR
+    Browser["🌐 瀏覽器"]
+    Route["Flask Route\nmain.py"]
+    Template["Jinja2 Template\nindex.html"]
+
+    Browser -->|"GET /"| Route
+    Route -->|"render_template()"| Template
+    Template -->|"HTML + CSS + JS"| Browser
+```
+
+### 4.2 WebSocket 即時推送流程
+
+```mermaid
+flowchart LR
+    User["👤 任意用戶"]
+    Server["Flask-SocketIO\napi.py"]
+    DB["SQLite\ndatabase.db"]
+    AllClients["所有連線中的\n瀏覽器"]
+
+    User -->|"emit('post_message')\n或 POST /api/post"| Server
+    Server -->|"寫入留言"| DB
+    Server -->|"broadcast('new_message')"| AllClients
+    AllClients -->|"更新留言板 DOM"| AllClients
+    AllClients -->|"觸發彈幕動畫"| AllClients
+```
+
+### 4.3 前端模組關係
+
+```mermaid
+flowchart TD
+    IndexHTML["index.html\n（單頁入口）"]
+
+    IndexHTML --> SocketJS["socket.js\nWebSocket 連線"]
+    IndexHTML --> DanmakuJS["danmaku.js\n彈幕動畫"]
+    IndexHTML --> QuickbtnJS["quickbtn.js\n主選單展開"]
+    IndexHTML --> PinnedJS["pinned.js\n釘選按鈕管理"]
+    IndexHTML --> SpeedJS["speed.js\n速度燈號切換"]
+
+    SocketJS -->|"new_message 事件"| DanmakuJS
+    SocketJS -->|"new_message 事件"| IndexHTML
+    QuickbtnJS -->|"點擊選項"| SocketJS
+    PinnedJS -->|"讀寫 localStorage"| PinnedJS
+    SpeedJS -->|"選擇燈號 → 發送"| SocketJS
+```
+
+### 4.4 路由與 API 對應
+
+```
+GET  /               → main.py → index.html   （唯一頁面）
+POST /api/post       → api.py                 （新增留言）
+GET  /api/messages   → api.py                 （取得留言列表）
+GET  /api/pinned     → api.py                 （取得釘選設定）
+POST /api/pinned     → api.py                 （更新釘選設定）
+
+SocketIO: post_message  → 接收留言 → 寫 DB → broadcast new_message
+SocketIO: new_message   → 廣播給所有用戶
+```
+
+---
+
+## 5. 資料庫設計（概覽）
+
+> 詳細欄位設計請見後續的 `DB_DESIGN.md`。
+
+### 主要資料表：`messages`
+
+| 欄位 | 型別 | 說明 |
+|------|------|------|
 | `id` | INTEGER PRIMARY KEY | 自動遞增主鍵 |
 | `content` | TEXT NOT NULL | 留言內容（最多 100 字） |
-| `role` | TEXT | 發送者角色（`driver` / `passenger` / `user`） |
-| `type` | TEXT | 留言類型（`traffic` / `construction` / `incident` / `police`） |
-| `created_at` | DATETIME | 建立時間（預設為當前時間） |
-
-> 資料保留策略：每次查詢自動過濾 24 小時以上的舊留言。
+| `category` | TEXT | 留言類型：speed / accident / debris / other |
+| `speed_level` | TEXT | 速度等級：red / yellow / green（僅速度類留言） |
+| `created_at` | DATETIME | 發送時間（UTC） |
 
 ---
 
-## 5. 關鍵設計決策
+## 6. 關鍵設計決策
 
-### 決策 1：使用 WebSocket（Flask-SocketIO）而非輪詢
+### 決策 1：單頁整合，不做多頁面切換
 
-**選擇**：採用 WebSocket 即時推送，而非每 5 秒 AJAX 輪詢。  
-**原因**：WebSocket 連線建立後雙向通訊，伺服器可主動推送新留言，減少不必要的 HTTP 請求，降低延遲，提升即時感。
+**選擇**：所有功能集中在單一頁面，左側導航、右側留言板、快速按鈕並存。
 
----
-
-### 決策 2：不做前後端分離，採用 Jinja2 SSR
-
-**選擇**：頁面由 Flask + Jinja2 在伺服器端渲染（Server-Side Rendering）。  
-**原因**：專案規模小、開發人員熟悉 Python，SSR 減少複雜度，SEO 友好，且首屏載入更快。
+**原因**：
+- 主駕駛行車中不應切換頁面，所有資訊需在同一畫面上取得
+- 單頁架構簡化路由，Flask 只需一個主路由 `main.py`
+- 前端複雜度集中在 JS 模組，後端保持簡單
 
 ---
 
-### 決策 3：快速回報按鈕冷卻時間由前端 JS 控制
+### 決策 2：速度燈號由駕駛手動點選
 
-**選擇**：冷卻計時器主要在前端（`cooldown.js`）實作，後端不做強制驗證（MVP 階段）。  
-**原因**：降低後端實作複雜度。注意：此設計在 MVP 後應補上後端 Rate Limiting（如 Flask-Limiter）。
+**選擇**：🔴🟡🟢 三個燈號不自動偵測，由駕駛依當前時速手動點擊選擇。
 
----
-
-### 決策 4：SQLite 作為唯一資料庫
-
-**選擇**：使用 SQLite 而非 PostgreSQL / MySQL。  
-**原因**：專案為單機或小規模使用，SQLite 無需額外安裝與設定，Python 內建支援，降低部署門檻。
+**原因**：
+- 瀏覽器 Geolocation API 速度偵測在市區或靜止情境下誤差大
+- 手動選擇更直覺，駕駛對自己車速最清楚
+- 降低隱私授權需求（不需位置權限）
 
 ---
 
-### 決策 5：彈幕動畫純 CSS + JS 實作
+### 決策 3：模擬地圖背景（MVP 階段）
 
-**選擇**：彈幕效果以 CSS `@keyframes` 水平滾動搭配 JS 動態插入 DOM 實現。  
-**原因**：不引入第三方動畫函式庫，維持技術棧精簡，且 CSS 動畫效能優於 JS 計算位移。
+**選擇**：左側導航畫面以 CSS 深色格線模擬地圖外觀，不整合外部地圖 API。
+
+**原因**：
+- Google Maps API 需申請費用，增加 MVP 複雜度
+- 核心功能（留言板 + 彈幕 + 快速按鈕）不依賴真實地圖即可驗證
+- 後期可無痛替換為 Google Maps Embed 或 Leaflet.js
 
 ---
 
-*本文件由 Antigravity AI Agent 根據 PRD.md 自動產出，請團隊共同審閱並補充細節。*
+### 決策 4：釘選按鈕儲存於 localStorage
+
+**選擇**：釘選設定不存入資料庫，儲存於使用者瀏覽器的 `localStorage`。
+
+**原因**：
+- 釘選偏好是個人設定，不需要伺服器端同步
+- 省去使用者登入系統的複雜度
+- localStorage 在同一裝置、同一瀏覽器下永久保留
+
+---
+
+### 決策 5：冷卻機制在前端 + 後端雙層防護
+
+**選擇**：快速回報冷卻時間在前端（`localStorage` 計時）與後端（IP + 時間窗口檢查）雙重實作。
+
+**原因**：
+- 前端冷卻提供即時 UI 回饋（按鈕變灰、倒數），改善使用者體驗
+- 後端驗證防止用戶繞過前端直接呼叫 API 洗版
+- 符合 PRD 的安全需求（60 秒內限發 3 則）
+
+---
+
+*本文件由 Antigravity AI Agent 協助產出，請團隊共同審閱並補充細節。*
