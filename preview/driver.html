@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>主駕駛快速回報 — Road Bulletin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    /* --- Driver Page Extras --- */
+    .driver-hero {
+      padding: 120px 24px 60px;
+      text-align: center;
+      background:
+        radial-gradient(ellipse 70% 50% at 50% 0%, rgba(239,68,68,0.18) 0%, transparent 70%),
+        linear-gradient(180deg, #0a0c14 0%, #080a12 100%);
+    }
+    .driver-hero-icon { font-size: 64px; margin-bottom: 20px; display: block; }
+    .driver-hero-title {
+      font-size: clamp(28px, 4vw, 44px);
+      font-weight: 900;
+      letter-spacing: -1px;
+      margin-bottom: 12px;
+      background: linear-gradient(135deg, #fca5a5, #ef4444);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .driver-hero-sub { color: var(--text-secondary); font-size: 15px; }
+
+    .quick-section {
+      max-width: 700px;
+      margin: 0 auto;
+      padding: 0 24px 80px;
+    }
+
+    .section-label {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      margin-bottom: 16px;
+    }
+
+    .quick-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+    @media (max-width: 500px) { .quick-grid { grid-template-columns: 1fr; } }
+
+    .quick-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding: 28px 20px;
+      background: var(--bg-card);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-lg);
+      cursor: pointer;
+      transition: all 0.25s;
+      font-family: var(--font-sans);
+      color: var(--text-primary);
+      position: relative;
+      overflow: hidden;
+    }
+    .quick-btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: var(--btn-color, transparent);
+      opacity: 0;
+      transition: opacity 0.25s;
+    }
+    .quick-btn:hover::before { opacity: 0.08; }
+    .quick-btn:hover {
+      border-color: var(--btn-color, rgba(255,255,255,0.2));
+      transform: translateY(-3px);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    }
+    .quick-btn:active { transform: translateY(-1px) scale(0.98); }
+    .quick-btn.sending {
+      pointer-events: none;
+    }
+    .quick-btn-icon { font-size: 40px; position: relative; z-index: 1; }
+    .quick-btn-label {
+      font-size: 16px;
+      font-weight: 700;
+      position: relative;
+      z-index: 1;
+    }
+    .quick-btn-sub {
+      font-size: 12px;
+      color: var(--text-secondary);
+      position: relative;
+      z-index: 1;
+    }
+    .quick-btn-badge {
+      position: absolute;
+      top: 12px; right: 14px;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: var(--radius-pill);
+      background: rgba(255,255,255,0.08);
+      color: var(--text-secondary);
+      letter-spacing: 0.5px;
+    }
+
+    /* btn colors */
+    #btn-traffic  { --btn-color: var(--traffic); }
+    #btn-incident { --btn-color: var(--incident); }
+    #btn-slow     { --btn-color: var(--slow); }
+    #btn-construction { --btn-color: var(--construction); }
+    #btn-police   { --btn-color: var(--police); }
+
+    /* cooldown bar */
+    .cooldown-panel {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 20px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .cooldown-info { display: flex; align-items: center; gap: 10px; }
+    .cooldown-icon { font-size: 22px; }
+    .cooldown-text { font-size: 14px; color: var(--text-secondary); }
+    .cooldown-text strong { color: var(--text-primary); }
+
+    .cooldown-bar-wrap {
+      flex: 1;
+      min-width: 200px;
+    }
+    .cooldown-bar-track {
+      height: 6px;
+      background: rgba(255,255,255,0.06);
+      border-radius: var(--radius-pill);
+      overflow: hidden;
+    }
+    .cooldown-bar-fill {
+      height: 100%;
+      width: 33%;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      border-radius: var(--radius-pill);
+      transition: width 0.5s ease;
+    }
+    .cooldown-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 6px;
+      text-align: right;
+    }
+
+    /* toast */
+    .toast-container {
+      position: fixed;
+      bottom: 32px; left: 50%;
+      transform: translateX(-50%);
+      z-index: 5000;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      pointer-events: none;
+    }
+    .toast {
+      padding: 12px 24px;
+      border-radius: var(--radius-pill);
+      background: rgba(17,24,39,0.92);
+      border: 1px solid rgba(255,255,255,0.1);
+      backdrop-filter: blur(16px);
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+      white-space: nowrap;
+      animation: toast-in 0.35s ease both, toast-out 0.35s ease 2.2s both;
+    }
+    @keyframes toast-in  { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:none; } }
+    @keyframes toast-out { to   { opacity:0; transform:translateY(-8px); } }
+  </style>
+</head>
+<body>
+
+<div id="danmaku-layer" aria-hidden="true"></div>
+
+<nav class="navbar" id="navbar">
+  <div class="nav-inner">
+    <a href="index.html" class="nav-logo">
+      <span class="logo-icon">🛣️</span>
+      <span class="logo-text">Road Bulletin</span>
+    </a>
+    <ul class="nav-links">
+      <li><a href="index.html" class="nav-link" id="nav-home">🏠 留言板</a></li>
+      <li><a href="driver.html" class="nav-link active">🚗 主駕駛</a></li>
+      <li><a href="passenger.html" class="nav-link">👤 副駕駛</a></li>
+      <li><a href="history.html" class="nav-link">📋 歷史記錄</a></li>
+    </ul>
+    <div class="nav-status">
+      <span class="status-dot live"></span>
+      <span class="status-text">即時連線中</span>
+    </div>
+  </div>
+</nav>
+
+<div class="driver-hero">
+  <span class="driver-hero-icon">🚗</span>
+  <h1 class="driver-hero-title">主駕駛快速回報</h1>
+  <p class="driver-hero-sub">單鍵發送，安全行車不分心</p>
+</div>
+
+<main class="quick-section" id="main">
+  <p class="section-label">一鍵快速回報</p>
+
+  <div class="quick-grid">
+    <button class="quick-btn" id="btn-traffic" data-msg="前方塞車，請注意！" data-type="traffic">
+      <span class="quick-btn-badge">最常使用</span>
+      <span class="quick-btn-icon">🚗</span>
+      <span class="quick-btn-label">前方塞車</span>
+      <span class="quick-btn-sub">前方塞車，請注意！</span>
+    </button>
+
+    <button class="quick-btn" id="btn-incident" data-msg="此路段有突發狀況，請小心行駛！" data-type="incident">
+      <span class="quick-btn-icon">⚠️</span>
+      <span class="quick-btn-label">突發狀況</span>
+      <span class="quick-btn-sub">此路段有突發狀況</span>
+    </button>
+
+    <button class="quick-btn" id="btn-slow" data-msg="此路段時速過低，建議改道。" data-type="slow">
+      <span class="quick-btn-icon">🐢</span>
+      <span class="quick-btn-label">車速過慢</span>
+      <span class="quick-btn-sub">建議改道繞行</span>
+    </button>
+
+    <button class="quick-btn" id="btn-construction" data-msg="前方道路施工，請減速慢行。" data-type="construction">
+      <span class="quick-btn-icon">🚧</span>
+      <span class="quick-btn-label">道路施工</span>
+      <span class="quick-btn-sub">請減速慢行</span>
+    </button>
+
+    <button class="quick-btn" id="btn-police" data-msg="前方有警察執法，請注意速限。" data-type="police" style="grid-column: 1 / -1;">
+      <span class="quick-btn-icon">🚔</span>
+      <span class="quick-btn-label">警察執法</span>
+      <span class="quick-btn-sub">前方有警察執法，請注意速限</span>
+    </button>
+  </div>
+
+  <p class="section-label">冷卻計時</p>
+  <div class="cooldown-panel">
+    <div class="cooldown-info">
+      <span class="cooldown-icon">⏱️</span>
+      <div class="cooldown-text">
+        60 秒內已發送 <strong id="sent-count">1</strong> / 3 則
+      </div>
+    </div>
+    <div class="cooldown-bar-wrap">
+      <div class="cooldown-bar-track">
+        <div class="cooldown-bar-fill" id="cooldown-bar" style="width: 33%;"></div>
+      </div>
+      <div class="cooldown-label" id="cooldown-label">還可發送 2 則</div>
+    </div>
+  </div>
+</main>
+
+<div class="toast-container" id="toast-container"></div>
+<footer class="footer">© 2026 Road Bulletin｜即時路況共享平台</footer>
+
+<script src="app.js"></script>
+<script>
+  // Driver page logic
+  let sentCount = 1;
+  const sentCountEl = document.getElementById('sent-count');
+  const cooldownBar = document.getElementById('cooldown-bar');
+  const cooldownLabel = document.getElementById('cooldown-label');
+  const toastContainer = document.getElementById('toast-container');
+
+  function showToast(msg) {
+    const t = document.createElement('div');
+    t.className = 'toast';
+    t.textContent = msg;
+    toastContainer.appendChild(t);
+    setTimeout(() => t.remove(), 2700);
+  }
+
+  function updateCooldown() {
+    sentCountEl.textContent = sentCount;
+    const pct = (sentCount / 3) * 100;
+    cooldownBar.style.width = pct + '%';
+    if (sentCount >= 3) {
+      cooldownLabel.textContent = '已達上限，請稍後再試';
+      cooldownBar.style.background = 'var(--traffic)';
+    } else {
+      cooldownLabel.textContent = `還可發送 ${3 - sentCount} 則`;
+    }
+  }
+
+  document.querySelectorAll('.quick-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (sentCount >= 3) {
+        showToast('⚠️ 60 秒內已達上限，請稍後再試');
+        return;
+      }
+      sentCount++;
+      updateCooldown();
+      showToast('✅ 已發送：' + btn.dataset.msg);
+      btn.classList.add('sending');
+      setTimeout(() => btn.classList.remove('sending'), 1500);
+    });
+  });
+</script>
+</body>
+</html>
