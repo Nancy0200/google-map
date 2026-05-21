@@ -1,0 +1,38 @@
+/* ============================================================
+   Road Bulletin — Danmaku (Bullet Comments) Animation
+   ============================================================ */
+
+#danmaku-layer {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.danmaku-item {
+    position: absolute;
+    white-space: nowrap;
+    font-size: 16px;
+    font-weight: 600;
+    font-family: var(--font-main);
+    color: rgba(232, 234, 240, 0.9);
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6), 0 0 12px rgba(108, 99, 255, 0.3);
+    padding: 6px 16px;
+    background: rgba(30, 32, 48, 0.55);
+    backdrop-filter: blur(4px);
+    border-radius: 20px;
+    border: 1px solid rgba(108, 99, 255, 0.15);
+    animation: danmaku-scroll var(--duration, 10s) linear forwards;
+    pointer-events: none;
+}
+
+/* Speed category colored accents */
+.danmaku-item[data-cat="speed"]    { border-color: rgba(108,99,255,0.3); }
+.danmaku-item[data-cat="accident"] { border-color: rgba(255,82,82,0.3); color: #ff9a9a; }
+.danmaku-item[data-cat="debris"]   { border-color: rgba(255,171,64,0.3); color: #ffd089; }
+
+@keyframes danmaku-scroll {
+    from { transform: translateX(100vw); }
+    to   { transform: translateX(-100%); }
+}
