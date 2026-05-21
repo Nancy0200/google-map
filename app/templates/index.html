@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="description" content="Road Bulletin — 即時路況留言板，讓駕駛互相分享路況資訊">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Road Bulletin — 即時路況留言板</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/quickbtn.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/danmaku.css') }}">
+</head>
+<body>
+    <div id="app">
+        <!-- ===== 全螢幕地圖 ===== -->
+        <main id="nav-panel">
+            <!-- 模擬地圖背景（CSS 繪製） -->
+            <div id="map-bg">
+                <div class="map-grid"></div>
+                <div class="map-road map-road-h"></div>
+                <div class="map-road map-road-v"></div>
+                <div class="map-label" style="top:18%;left:12%">🏫 中正大學</div>
+                <div class="map-label" style="top:45%;left:55%">🏪 7-11</div>
+                <div class="map-label" style="top:72%;left:30%">⛽ 加油站</div>
+                <div class="map-label" style="top:25%;left:75%">🏥 醫院</div>
+            </div>
+
+            <!-- 彈幕層 -->
+            <div id="danmaku-layer"></div>
+
+            <!-- ===== 快速回報按鈕區 (左下角) ===== -->
+            <div id="quick-btn-area">
+                <!-- 釘選格 (左側 3 格) -->
+                <div id="pinned-slots">
+                    <button class="pinned-btn" data-slot="2" title="釘選格 3">
+                        <span class="pinned-icon">📌</span>
+                    </button>
+                    <button class="pinned-btn" data-slot="1" title="釘選格 2">
+                        <span class="pinned-icon">📌</span>
+                    </button>
+                    <button class="pinned-btn" data-slot="0" title="釘選格 1">
+                        <span class="pinned-icon">📌</span>
+                    </button>
+                </div>
+
+                <!-- 主選單按鈕 -->
+                <button id="menu-toggle" title="快速回報">
+                    <span class="menu-icon">◉</span>
+                </button>
+
+                <!-- 選項面板 (向上展開) -->
+                <div id="menu-panel" class="collapsed">
+                    <button class="menu-option" data-key="red">
+                        <span class="option-icon">🔴</span>
+                        <span class="option-label">車速 &lt; 30</span>
+                    </button>
+                    <button class="menu-option" data-key="yellow">
+                        <span class="option-icon">🟡</span>
+                        <span class="option-label">車速 30–60</span>
+                    </button>
+                    <button class="menu-option" data-key="green">
+                        <span class="option-icon">🟢</span>
+                        <span class="option-label">車速 &gt; 60</span>
+                    </button>
+                    <button class="menu-option" data-key="accident">
+                        <span class="option-icon">🚗💥</span>
+                        <span class="option-label">前方車禍</span>
+                    </button>
+                    <button class="menu-option" data-key="debris">
+                        <span class="option-icon">📦⚠️</span>
+                        <span class="option-label">前方掉落物</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 釘選提示覆蓋層 -->
+            <div id="pin-overlay" class="hidden">
+                <div id="pin-prompt">
+                    <p>選擇要釘選的格位：</p>
+                    <div id="pin-prompt-slots">
+                        <button class="pin-slot-choice" data-slot="0">格 1</button>
+                        <button class="pin-slot-choice" data-slot="1">格 2</button>
+                        <button class="pin-slot-choice" data-slot="2">格 3</button>
+                    </div>
+                    <button id="pin-cancel">取消</button>
+                </div>
+            </div>
+
+            <!-- 冷卻提示 -->
+            <div id="cooldown-toast" class="hidden">
+                <span id="cooldown-msg">發送過於頻繁，請稍候 <span id="cooldown-sec">0</span> 秒</span>
+            </div>
+        </main>
+
+        <!-- ===== 半透明背景遮罩 ===== -->
+        <div id="sheet-backdrop"></div>
+
+        <!-- ===== 底部抽屜：留言板 ===== -->
+        <aside id="message-panel">
+            <!-- 拖曳手柄 -->
+            <div id="sheet-handle">
+                <div class="handle-bar"></div>
+            </div>
+            <header id="panel-header">
+                <h1>💬 即時路況</h1>
+                <span id="msg-count">0</span>
+                <span id="sheet-arrow">▲</span>
+            </header>
+            <div id="filter-bar">
+                <button class="filter-btn active" data-category="">全部</button>
+                <button class="filter-btn" data-category="speed">速度</button>
+                <button class="filter-btn" data-category="accident">車禍</button>
+                <button class="filter-btn" data-category="debris">掉落物</button>
+                <button class="filter-btn" data-category="other">其他</button>
+            </div>
+            <div id="message-list">
+                <!-- Messages rendered here dynamically -->
+                <div id="empty-state">
+                    <p>📡 等待路況回報中...</p>
+                </div>
+            </div>
+            <footer id="input-area">
+                <input type="text" id="msg-input" placeholder="輸入路況訊息..." maxlength="100" autocomplete="off">
+                <button id="msg-send">送出</button>
+            </footer>
+        </aside>
+    </div>
+
+    <!-- SocketIO client library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
+    <!-- App modules -->
+    <script src="{{ url_for('static', filename='js/speed.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/cooldown.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/socket.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/danmaku.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/pinned.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/quickbtn.js') }}"></script>
+</body>
+</html>
