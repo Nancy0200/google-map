@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>留言歷史記錄 — Road Bulletin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    .hist-hero {
+      padding: 120px 24px 60px;
+      text-align: center;
+      background:
+        radial-gradient(ellipse 70% 50% at 50% 0%, rgba(234,179,8,0.14) 0%, transparent 70%),
+        linear-gradient(180deg, #0a0c14 0%, #080a12 100%);
+    }
+    .hist-hero-icon { font-size: 64px; display: block; margin-bottom: 20px; }
+    .hist-hero-title {
+      font-size: clamp(28px, 4vw, 44px);
+      font-weight: 900;
+      letter-spacing: -1px;
+      margin-bottom: 12px;
+      background: linear-gradient(135deg, #fde047, #eab308);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hist-hero-sub { color: var(--text-secondary); font-size: 15px; }
+
+    .hist-main {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 0 24px 80px;
+    }
+
+    /* Search / filter bar */
+    .hist-search-bar {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+    .search-input-wrap {
+      flex: 1;
+      position: relative;
+      min-width: 200px;
+    }
+    .search-icon {
+      position: absolute;
+      left: 14px; top: 50%;
+      transform: translateY(-50%);
+      font-size: 16px;
+      pointer-events: none;
+    }
+    .search-input {
+      width: 100%;
+      padding: 11px 16px 11px 42px;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      color: var(--text-primary);
+      font-size: 14px;
+      font-family: var(--font-sans);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .search-input:focus { border-color: var(--accent); }
+    .search-input::placeholder { color: var(--text-muted); }
+
+    .time-select {
+      padding: 11px 20px;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      color: var(--text-secondary);
+      font-size: 13px;
+      font-family: var(--font-sans);
+      outline: none;
+      cursor: pointer;
+    }
+    .time-select:focus { border-color: var(--accent); }
+
+    .hist-filter-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .hist-filter-label { font-size: 12px; color: var(--text-muted); font-weight: 600; letter-spacing: 0.5px; }
+
+    /* History table / list */
+    .hist-list { display: flex; flex-direction: column; gap: 10px; }
+
+    .hist-card {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      padding: 16px 18px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      transition: all 0.2s;
+      animation: slide-in 0.35s ease both;
+    }
+    .hist-card:hover {
+      background: var(--bg-card-hover);
+      border-color: rgba(255,255,255,0.1);
+    }
+    .hist-card[data-type="traffic"]      { border-left: 3px solid var(--traffic); }
+    .hist-card[data-type="incident"]     { border-left: 3px solid var(--incident); }
+    .hist-card[data-type="construction"] { border-left: 3px solid var(--construction); }
+    .hist-card[data-type="police"]       { border-left: 3px solid var(--police); }
+    .hist-card[data-type="slow"]         { border-left: 3px solid var(--slow); }
+
+    .hist-avatar { font-size: 24px; flex-shrink: 0; margin-top: 2px; }
+    .hist-body { flex: 1; min-width: 0; }
+    .hist-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+      flex-wrap: wrap;
+    }
+    .hist-time-full {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-left: auto;
+      white-space: nowrap;
+    }
+    .hist-content {
+      font-size: 14px;
+      color: var(--text-primary);
+    }
+
+    /* Pagination */
+    .pagination {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+      margin-top: 32px;
+    }
+    .page-btn {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-secondary);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: var(--font-sans);
+      transition: all 0.2s;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .page-btn:hover { color: var(--text-primary); border-color: rgba(255,255,255,0.2); }
+    .page-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .page-ellipsis { color: var(--text-muted); font-size: 14px; }
+  </style>
+</head>
+<body>
+
+<div id="danmaku-layer" aria-hidden="true"></div>
+
+<nav class="navbar" id="navbar">
+  <div class="nav-inner">
+    <a href="index.html" class="nav-logo">
+      <span class="logo-icon">🛣️</span>
+      <span class="logo-text">Road Bulletin</span>
+    </a>
+    <ul class="nav-links">
+      <li><a href="index.html" class="nav-link">🏠 留言板</a></li>
+      <li><a href="driver.html" class="nav-link">🚗 主駕駛</a></li>
+      <li><a href="passenger.html" class="nav-link">👤 副駕駛</a></li>
+      <li><a href="history.html" class="nav-link active">📋 歷史記錄</a></li>
+    </ul>
+    <div class="nav-status">
+      <span class="status-dot live"></span>
+      <span class="status-text">即時連線中</span>
+    </div>
+  </div>
+</nav>
+
+<div class="hist-hero">
+  <span class="hist-hero-icon">📋</span>
+  <h1 class="hist-hero-title">留言歷史記錄</h1>
+  <p class="hist-hero-sub">查詢過去 24 小時內的所有路況留言</p>
+</div>
+
+<main class="hist-main" id="main">
+
+  <div class="hist-search-bar">
+    <div class="search-input-wrap">
+      <span class="search-icon">🔍</span>
+      <input type="text" class="search-input" id="search-input" placeholder="搜尋留言內容…" />
+    </div>
+    <select class="time-select" id="time-select">
+      <option value="24">過去 24 小時</option>
+      <option value="12">過去 12 小時</option>
+      <option value="6">過去 6 小時</option>
+      <option value="1">過去 1 小時</option>
+    </select>
+  </div>
+
+  <div class="hist-filter-row">
+    <span class="hist-filter-label">類型：</span>
+    <div class="filter-chips">
+      <button class="chip active" data-filter="all">全部</button>
+      <button class="chip traffic"      data-filter="traffic">🚗 塞車</button>
+      <button class="chip incident"     data-filter="incident">⚠️ 突發</button>
+      <button class="chip construction" data-filter="construction">🚧 施工</button>
+      <button class="chip police"       data-filter="police">🚔 執法</button>
+      <button class="chip slow"         data-filter="slow">🐢 車速慢</button>
+    </div>
+  </div>
+
+  <div class="hist-list" id="hist-list">
+
+    <div class="hist-card" data-type="traffic">
+      <span class="hist-avatar">🚗</span>
+      <div class="hist-body">
+        <div class="hist-meta">
+          <span class="msg-role driver-badge">主駕駛</span>
+          <span class="msg-type-tag traffic">塞車</span>
+          <span class="hist-time-full">2026-05-21 08:52</span>
+        </div>
+        <div class="hist-content">前方塞車，請注意！</div>
+      </div>
+    </div>
+
+    <div class="hist-card" data-type="police">
+      <span class="hist-avatar">👤</span>
+      <div class="hist-body">
+        <div class="hist-meta">
+          <span class="msg-role passenger-badge">副駕駛</span>
+          <span class="msg-type-tag police">執法</span>
+          <span class="hist-time-full">2026-05-21 08:49</span>
+        </div>
+        <div class="hist-content">前方有警察執法，請注意速限。</div>
+      </div>
+    </div>
+
+    <div class="hist-card" data-type="construction">
+      <span class="hist-avatar">🚗</span>
+      <div class="hist-body">
+        <div class="hist-meta">
+          <span class="msg-role driver-badge">主駕駛</span>
+          <span class="msg-type-tag construction">施工</span>
+          <span class="hist-time-full">2026-05-21 08:45</span>
+        </div>
+        <div class="hist-content">前方道路施工，請減速慢行。</div>
+      </div>
+    </div>
+
+    <div class="hist-card" data-type="incident">
+      <span class="hist-avatar">👤</span>
+      <div class="hist-body">
+        <div class="hist-meta">
+          <span class="msg-role passenger-badge">副駕駛</span>
+          <span class="msg-type-tag incident">突發</span>
+          <span class="hist-time-full">2026-05-21 08:40</span>
+        </div>
+        <div class="hist-content">此路段有突發狀況，請小心行駛！路肩有車輛故障停靠。</div>
+      </div>
+    </div>
+
+    <div class="hist-card" data-type="slow">
+      <span class="hist-avatar">🚗</span>
+      <div class="hist-body">
+        <div class="hist-meta">
+          <span class="msg-role driver-badge">主駕駛</span>
+          <span class="msg-type-tag slow">車速慢</span>
+          <span class="hist-time-full">2026-05-21 08:37</span>
+        </div>
+        <div class="hist-content">此路段時速過低，建議改道。</div>
+      </div>
+    </div>
+
+    <div class="hist-card" data-type="traffic">
+      <span class="hist-avatar">🧑</span>
+      <div class="hist-body">
+        <div class="hist-meta">
+          <span class="msg-role user-badge">一般使用者</span>
+          <span class="msg-type-tag traffic">塞車</span>
+          <span class="hist-time-full">2026-05-21 08:30</span>
+        </div>
+        <div class="hist-content">中山高速公路北上三重路段大塞車，預計延誤約20分鐘。</div>
+      </div>
+    </div>
+
+    <div class="hist-card" data-type="police">
+      <span class="hist-avatar">🚗</span>
+      <div class="hist-body">
+        <div class="hist-meta">
+          <span class="msg-role driver-badge">主駕駛</span>
+          <span class="msg-type-tag police">執法</span>
+          <span class="hist-time-full">2026-05-21 07:55</span>
+        </div>
+        <div class="hist-content">前方有警察執法，請注意速限。</div>
+      </div>
+    </div>
+
+    <div class="hist-card" data-type="incident">
+      <span class="hist-avatar">👤</span>
+      <div class="hist-body">
+        <div class="hist-meta">
+          <span class="msg-role passenger-badge">副駕駛</span>
+          <span class="msg-type-tag incident">突發</span>
+          <span class="hist-time-full">2026-05-21 07:20</span>
+        </div>
+        <div class="hist-content">三重交流道發生車禍，目前已清除但仍有塞車。</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="pagination">
+    <button class="page-btn active" id="page-1">1</button>
+    <button class="page-btn" id="page-2">2</button>
+    <button class="page-btn" id="page-3">3</button>
+    <span class="page-ellipsis">…</span>
+    <button class="page-btn" id="page-last">8</button>
+  </div>
+
+</main>
+
+<footer class="footer">© 2026 Road Bulletin｜即時路況共享平台</footer>
+
+<script src="app.js"></script>
+<script>
+  // History filter chips
+  document.querySelectorAll('.chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      const filter = chip.dataset.filter;
+      document.querySelectorAll('.hist-card').forEach(card => {
+        card.style.display = (filter === 'all' || card.dataset.type === filter) ? 'flex' : 'none';
+      });
+    });
+  });
+
+  // Search
+  document.getElementById('search-input').addEventListener('input', function() {
+    const q = this.value.toLowerCase();
+    document.querySelectorAll('.hist-card').forEach(card => {
+      const text = card.querySelector('.hist-content').textContent.toLowerCase();
+      card.style.display = text.includes(q) ? 'flex' : 'none';
+    });
+  });
+
+  // Pagination (visual only)
+  document.querySelectorAll('.page-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.page-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    });
+  });
+</script>
+</body>
+</html>

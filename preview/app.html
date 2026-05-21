@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <title>Road Bulletin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="app.css"/>
+</head>
+<body>
+
+<!-- ===================== MAP（永遠全螢幕背景） ===================== -->
+<div id="map-layer">
+  <!-- GPS 狀態欄 -->
+  <div id="gps-bar">
+    <div class="gps-left">
+      <span class="gps-dot"></span>
+      <span id="gps-road">國道一號 北上 32K</span>
+    </div>
+    <div class="gps-right">
+      <span class="speed-val" id="gps-speed">87</span>
+      <span class="speed-unit">km/h</span>
+      <div class="limit-box">
+        <span class="limit-top">限速</span>
+        <span class="limit-num">100</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 模擬地圖 -->
+  <svg id="map-svg" viewBox="0 0 390 780" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+    <rect width="390" height="780" fill="#131c2e"/>
+    <!-- 格線 -->
+    <g stroke="#1d2a40" stroke-width="1">
+      <line x1="0" y1="78" x2="390" y2="78"/><line x1="0" y1="156" x2="390" y2="156"/>
+      <line x1="0" y1="234" x2="390" y2="234"/><line x1="0" y1="312" x2="390" y2="312"/>
+      <line x1="0" y1="390" x2="390" y2="390"/><line x1="0" y1="468" x2="390" y2="468"/>
+      <line x1="0" y1="546" x2="390" y2="546"/><line x1="0" y1="624" x2="390" y2="624"/>
+      <line x1="78" y1="0" x2="78" y2="780"/><line x1="156" y1="0" x2="156" y2="780"/>
+      <line x1="234" y1="0" x2="234" y2="780"/><line x1="312" y1="0" x2="312" y2="780"/>
+    </g>
+    <!-- 次要道路 -->
+    <path d="M0,300 Q100,290 160,270 Q220,250 250,220 Q280,190 300,150 L390,130" stroke="#243047" stroke-width="16" fill="none" stroke-linecap="round"/>
+    <path d="M0,450 Q80,430 140,400 Q200,370 240,320 Q270,280 310,220 L390,190" stroke="#1e2a3e" stroke-width="10" fill="none" stroke-linecap="round"/>
+    <path d="M0,160 Q60,180 100,210 Q150,250 170,310 L180,780" stroke="#1e2a3e" stroke-width="9" fill="none" stroke-linecap="round"/>
+    <path d="M310,0 Q300,120 295,220 Q290,320 300,430 L320,780" stroke="#1e2a3e" stroke-width="9" fill="none" stroke-linecap="round"/>
+    <path d="M0,600 Q100,590 180,585 Q260,580 340,592 L390,596" stroke="#1e2a3e" stroke-width="8" fill="none" stroke-linecap="round"/>
+    <!-- 導航路線（藍色） -->
+    <path d="M195,780 Q195,650 196,540 Q197,430 200,340 Q204,250 212,190 Q222,130 250,100 L390,85" stroke="#1d4ed8" stroke-width="9" fill="none" stroke-linecap="round"/>
+    <path d="M195,780 Q195,650 196,540 Q197,430 200,340 Q204,250 212,190 Q222,130 250,100 L390,85" stroke="#60a5fa" stroke-width="5" fill="none" stroke-linecap="round" opacity="0.8"/>
+    <!-- GPS 位置針 -->
+    <g id="gps-pin" transform="translate(197,490)">
+      <circle r="28" fill="rgba(59,130,246,0.1)" class="acc-ring"/>
+      <path d="M0,-20 L-11,9 L0,3 L11,9 Z" fill="#2563eb"/>
+      <circle r="8" fill="#3b82f6" stroke="white" stroke-width="2.5"/>
+      <circle r="3.5" fill="white"/>
+    </g>
+    <!-- 路況標示 -->
+    <g transform="translate(217,370)">
+      <rect x="-24" y="-15" width="48" height="30" rx="10" fill="rgba(239,68,68,0.92)"/>
+      <text x="0" y="6" text-anchor="middle" font-size="14" font-family="Inter,sans-serif" fill="white" font-weight="800">🚗塞</text>
+    </g>
+    <g transform="translate(240,270)">
+      <rect x="-24" y="-15" width="48" height="30" rx="10" fill="rgba(59,130,246,0.92)"/>
+      <text x="0" y="6" text-anchor="middle" font-size="13" font-family="Inter,sans-serif" fill="white" font-weight="800">🚔法</text>
+    </g>
+    <!-- 距離刻度 -->
+    <text x="178" y="425" text-anchor="middle" font-size="11" font-family="Inter" fill="#4a5a75">1.2 km</text>
+    <text x="178" y="325" text-anchor="middle" font-size="11" font-family="Inter" fill="#4a5a75">3.0 km</text>
+  </svg>
+
+  <!-- 地圖上的即時通知（從右滑入） -->
+  <div id="map-toasts"></div>
+
+  <!-- 前方路況橫幅 -->
+  <div id="ahead-banner" class="banner-traffic">
+    <span class="banner-icon">⚠️</span>
+    <div class="banner-text">
+      <span class="banner-label">前方 1.2 公里 · 塞車</span>
+      <span class="banner-sub">前方塞車，請注意！</span>
+    </div>
+    <button id="ahead-close" class="banner-close">✕</button>
+  </div>
+</div>
+
+<!-- ===================== FAB 浮動按鈕 ===================== -->
+<div id="fab" class="is-ball" id="fab">
+
+  <!-- 球形狀態 -->
+  <div id="ball-view">
+    <div class="ball-ring"></div>
+    <span class="ball-icon">🛣️</span>
+    <span class="ball-badge" id="ball-badge">3</span>
+  </div>
+
+  <!-- 展開面板狀態 -->
+  <div id="panel-view">
+
+    <!-- 面板頂部 -->
+    <div id="panel-header">
+      <div class="ph-left">
+        <span class="ph-logo">🛣️</span>
+        <div class="ph-info">
+          <span class="ph-title">Road Bulletin</span>
+          <span class="ph-gps" id="ph-gps">國道一號 北上 · <b id="ph-speed">87</b> km/h</span>
+        </div>
+      </div>
+      <button id="btn-close" aria-label="關閉">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+          <path d="M5 5L15 15M15 5L5 15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Tab Bar -->
+    <nav id="tabs">
+      <button class="tab active" data-tab="bulletin" id="tab-bulletin">
+        <span>📡</span><span>路況</span>
+        <span class="tab-dot" id="tab-dot-bulletin">3</span>
+      </button>
+      <button class="tab" data-tab="report" id="tab-report">
+        <span>🚗</span><span>回報</span>
+      </button>
+      <button class="tab" data-tab="input" id="tab-input">
+        <span>✍️</span><span>輸入</span>
+      </button>
+      <button class="tab" data-tab="history" id="tab-history">
+        <span>📋</span><span>歷史</span>
+      </button>
+    </nav>
+
+    <!-- Tab 內容 -->
+    <div id="tab-body">
+
+      <!-- ── 路況 ── -->
+      <div class="tab-pane active" id="pane-bulletin">
+        <div class="pane-toolbar">
+          <div class="filter-chips">
+            <button class="chip active" data-f="all">全部</button>
+            <button class="chip" data-f="traffic">🚗塞車</button>
+            <button class="chip" data-f="incident">⚠️突發</button>
+            <button class="chip" data-f="construction">🚧施工</button>
+            <button class="chip" data-f="police">🚔執法</button>
+          </div>
+        </div>
+        <div class="msg-list" id="msg-list">
+          <div class="msg-card new" data-type="traffic">
+            <div class="mc-accent traffic"></div>
+            <div class="mc-icon traffic">🚗</div>
+            <div class="mc-body">
+              <div class="mc-top"><span class="mc-tag traffic">塞車</span><span class="mc-dist">前方 1.2 km</span><span class="mc-time">08:52</span></div>
+              <p class="mc-text">前方塞車，請注意！</p>
+              <div class="mc-foot"><button class="mc-confirm" id="m1">✅ 確認 <b>14</b></button><span class="mc-role dr">主駕駛</span></div>
+            </div>
+          </div>
+          <div class="msg-card" data-type="police">
+            <div class="mc-accent police"></div>
+            <div class="mc-icon police">🚔</div>
+            <div class="mc-body">
+              <div class="mc-top"><span class="mc-tag police">執法</span><span class="mc-dist">前方 2.8 km</span><span class="mc-time">08:49</span></div>
+              <p class="mc-text">前方有警察執法，請注意速限。</p>
+              <div class="mc-foot"><button class="mc-confirm" id="m2">✅ 確認 <b>8</b></button><span class="mc-role ps">副駕駛</span></div>
+            </div>
+          </div>
+          <div class="msg-card" data-type="construction">
+            <div class="mc-accent construction"></div>
+            <div class="mc-icon construction">🚧</div>
+            <div class="mc-body">
+              <div class="mc-top"><span class="mc-tag construction">施工</span><span class="mc-dist">前方 4.1 km</span><span class="mc-time">08:45</span></div>
+              <p class="mc-text">前方道路施工，請減速慢行。</p>
+              <div class="mc-foot"><button class="mc-confirm" id="m3">✅ 確認 <b>21</b></button><span class="mc-role dr">主駕駛</span></div>
+            </div>
+          </div>
+          <div class="msg-card" data-type="incident">
+            <div class="mc-accent incident"></div>
+            <div class="mc-icon incident">⚠️</div>
+            <div class="mc-body">
+              <div class="mc-top"><span class="mc-tag incident">突發</span><span class="mc-dist">前方 6.5 km</span><span class="mc-time">08:40</span></div>
+              <p class="mc-text">此路段有突發狀況，路肩有車輛故障。</p>
+              <div class="mc-foot"><button class="mc-confirm" id="m4">✅ 確認 <b>5</b></button><span class="mc-role ps">副駕駛</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── 回報（主駕駛大按鈕） ── -->
+      <div class="tab-pane" id="pane-report">
+        <div class="pane-toolbar">
+          <span class="pane-label">一鍵快速回報</span>
+          <span class="cd-info">還可發 <b id="cd-left">3</b> 則</span>
+        </div>
+        <div class="quick-grid">
+          <button class="qbtn t-traffic"      data-type="traffic"      data-msg="前方塞車，請注意！" id="qb1"><span>🚗</span><span>前方塞車</span></button>
+          <button class="qbtn t-incident"     data-type="incident"     data-msg="此路段有突發狀況，請小心行駛！" id="qb2"><span>⚠️</span><span>突發狀況</span></button>
+          <button class="qbtn t-slow"         data-type="slow"         data-msg="此路段時速過低，建議改道。" id="qb3"><span>🐢</span><span>車速過慢</span></button>
+          <button class="qbtn t-construction" data-type="construction" data-msg="前方道路施工，請減速慢行。" id="qb4"><span>🚧</span><span>道路施工</span></button>
+          <button class="qbtn t-police full"  data-type="police"       data-msg="前方有警察執法，請注意速限。" id="qb5"><span>🚔</span><span>警察執法</span></button>
+        </div>
+      </div>
+
+      <!-- ── 輸入（副駕駛） ── -->
+      <div class="tab-pane" id="pane-input">
+        <div class="pane-toolbar">
+          <span class="pane-label">發送路況留言</span>
+          <span class="char-count" id="char-cnt">0/100</span>
+        </div>
+        <div class="type-chips">
+          <button class="tchip active" data-t="traffic">🚗 塞車</button>
+          <button class="tchip" data-t="incident">⚠️ 突發</button>
+          <button class="tchip" data-t="construction">🚧 施工</button>
+          <button class="tchip" data-t="police">🚔 執法</button>
+          <button class="tchip" data-t="slow">🐢 慢</button>
+        </div>
+        <textarea id="msg-input" placeholder="描述路況（最多 100 字）…" maxlength="100"></textarea>
+        <div class="input-actions">
+          <button class="btn-sec" id="btn-clear">清除</button>
+          <button class="btn-pri" id="btn-send">🚀 發送</button>
+        </div>
+      </div>
+
+      <!-- ── 歷史 ── -->
+      <div class="tab-pane" id="pane-history">
+        <div class="pane-toolbar"><span class="pane-label">過去 24 小時</span><span class="cd-info">共 <b>87</b> 則</span></div>
+        <div class="hist-list" id="hist-list">
+          <div class="hi"><span class="hd traffic"></span><div class="hb"><div class="ht"><span class="htag traffic">🚗 塞車</span><span class="hdist">前方 1.2 km</span><span class="htime">08:52</span></div><p class="hmsg">前方塞車，請注意！</p></div></div>
+          <div class="hi"><span class="hd police"></span><div class="hb"><div class="ht"><span class="htag police">🚔 執法</span><span class="hdist">前方 2.8 km</span><span class="htime">08:49</span></div><p class="hmsg">前方有警察執法，請注意速限。</p></div></div>
+          <div class="hi"><span class="hd construction"></span><div class="hb"><div class="ht"><span class="htag construction">🚧 施工</span><span class="hdist">前方 4.1 km</span><span class="htime">08:45</span></div><p class="hmsg">前方道路施工，請減速慢行。</p></div></div>
+          <div class="hi"><span class="hd incident"></span><div class="hb"><div class="ht"><span class="htag incident">⚠️ 突發</span><span class="hdist">前方 6.5 km</span><span class="htime">08:40</span></div><p class="hmsg">此路段有突發狀況，路肩有車輛故障。</p></div></div>
+          <div class="hi"><span class="hd traffic"></span><div class="hb"><div class="ht"><span class="htag traffic">🐢 慢</span><span class="hdist">前方 8.0 km</span><span class="htime">08:37</span></div><p class="hmsg">此路段時速過低，建議改道。</p></div></div>
+        </div>
+      </div>
+
+    </div><!-- /#tab-body -->
+
+    <!-- 滑動提示 -->
+    <div id="swipe-hint">← 往左下滑動以收起</div>
+
+  </div><!-- /#panel-view -->
+</div><!-- /#fab -->
+
+<!-- 全域提示 Toast -->
+<div id="g-toast" class="g-toast hidden"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
