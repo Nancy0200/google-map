@@ -13,6 +13,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/quickbtn.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/danmaku.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/copilot-chat.css') }}">
 </head>
 <body>
     <div id="app">
@@ -96,38 +97,51 @@
             </div>
         </main>
 
-        <!-- ===== 半透明背景遮罩 ===== -->
-        <div id="sheet-backdrop"></div>
+        <!-- ===== 即時路況留言板 Toggle ===== -->
+        <button id="copilot-toggle" title="即時路況留言板">
+            <span id="copilot-unread" class="hidden"></span>
+            <span class="toggle-icon">💬</span>
+        </button>
 
-        <!-- ===== 底部抽屜：留言板 ===== -->
-        <aside id="message-panel">
-            <!-- 拖曳手柄 -->
-            <div id="sheet-handle">
-                <div class="handle-bar"></div>
-            </div>
-            <header id="panel-header">
-                <h1>💬 即時路況</h1>
-                <span id="msg-count">0</span>
-                <span id="sheet-arrow">▲</span>
+        <!-- ===== 即時路況留言板 (底部面板) ===== -->
+        <section id="copilot-panel">
+            <header id="copilot-header">
+                <div class="chat-avatar">🧑‍✈️</div>
+                <div class="chat-info">
+                    <div class="chat-title">即時路況留言板</div>
+                    <div class="chat-status">即時連線中</div>
+                </div>
+                <span id="copilot-online-count">1 在線</span>
+                <button class="copilot-minimize-btn" id="copilot-minimize" title="縮小留言板">▾</button>
+                <button class="copilot-close-btn" id="copilot-close" title="關閉留言板">✕</button>
             </header>
-            <div id="filter-bar">
-                <button class="filter-btn active" data-category="">全部</button>
-                <button class="filter-btn" data-category="speed">速度</button>
-                <button class="filter-btn" data-category="accident">車禍</button>
-                <button class="filter-btn" data-category="debris">掉落物</button>
-                <button class="filter-btn" data-category="other">其他</button>
-            </div>
-            <div id="message-list">
-                <!-- Messages rendered here dynamically -->
-                <div id="empty-state">
-                    <p>📡 等待路況回報中...</p>
+            <div id="copilot-messages">
+                <div id="copilot-empty">
+                    <span class="empty-icon">💬</span>
+                    <span class="empty-text">在這裡輸入文字<br>與駕駛分享路況資訊</span>
                 </div>
             </div>
-            <footer id="input-area">
-                <input type="text" id="msg-input" placeholder="輸入路況訊息..." maxlength="100" autocomplete="off">
-                <button id="msg-send">送出</button>
+            <div id="copilot-typing">
+                <div class="typing-dots"><span></span><span></span><span></span></div>
+                <span>有人正在輸入...</span>
+            </div>
+            <div id="copilot-quick-tags">
+                <button class="quick-tag" data-text="前方塞車">🚗 塞車</button>
+                <button class="quick-tag" data-text="路況順暢">✅ 順暢</button>
+                <button class="quick-tag" data-text="小心前方施工">🚧 施工</button>
+                <button class="quick-tag" data-text="注意測速照相">📸 測速</button>
+                <button class="quick-tag" data-text="下雨路滑">🌧️ 雨天</button>
+            </div>
+            <footer id="copilot-input-area">
+                <div id="copilot-input-wrapper">
+                    <input type="text" id="copilot-input" placeholder="輸入訊息..." maxlength="100" autocomplete="off">
+                    <span id="copilot-char-count">0/100</span>
+                </div>
+                <button id="copilot-send" disabled title="送出訊息">
+                    <span class="send-icon">➤</span>
+                </button>
             </footer>
-        </aside>
+        </section>
     </div>
 
     <!-- SocketIO client library -->
@@ -139,5 +153,6 @@
     <script src="{{ url_for('static', filename='js/danmaku.js') }}"></script>
     <script src="{{ url_for('static', filename='js/pinned.js') }}"></script>
     <script src="{{ url_for('static', filename='js/quickbtn.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/copilot-chat.js') }}"></script>
 </body>
 </html>
