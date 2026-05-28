@@ -37,6 +37,7 @@
 }
 
 html, body {
+    width: 100%;
     height: 100%;
     font-family: var(--font-main);
     background: #090a0f; /* Extra dark surrounding background for mobile frame contrast */
