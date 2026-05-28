@@ -13,6 +13,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/quickbtn.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/danmaku.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/copilot-chat.css') }}">
 </head>
 <body>
     <div id="app">
@@ -96,6 +97,52 @@
             </div>
         </main>
 
+        <!-- ===== 副駕駛聊天室 Toggle ===== -->
+        <button id="copilot-toggle" title="副駕駛留言板">
+            <span id="copilot-unread" class="hidden"></span>
+            <span class="toggle-arrow">◀</span>
+            <span class="toggle-label">留言板</span>
+        </button>
+
+        <!-- ===== 副駕駛聊天室 (右側面板) ===== -->
+        <section id="copilot-panel">
+            <header id="copilot-header">
+                <div class="chat-avatar">🧑‍✈️</div>
+                <div class="chat-info">
+                    <div class="chat-title">副駕駛留言板</div>
+                    <div class="chat-status">即時連線中</div>
+                </div>
+                <span id="copilot-online-count">1 在線</span>
+                <button class="copilot-minimize-btn" id="copilot-minimize" title="縮小聊天室">▾</button>
+            </header>
+            <div id="copilot-messages">
+                <div id="copilot-empty">
+                    <span class="empty-icon">💬</span>
+                    <span class="empty-text">在這裡輸入文字<br>與駕駛分享路況資訊</span>
+                </div>
+            </div>
+            <div id="copilot-typing">
+                <div class="typing-dots"><span></span><span></span><span></span></div>
+                <span>有人正在輸入...</span>
+            </div>
+            <div id="copilot-quick-tags">
+                <button class="quick-tag" data-text="前方塞車">🚗 塞車</button>
+                <button class="quick-tag" data-text="路況順暢">✅ 順暢</button>
+                <button class="quick-tag" data-text="小心前方施工">🚧 施工</button>
+                <button class="quick-tag" data-text="注意測速照相">📸 測速</button>
+                <button class="quick-tag" data-text="下雨路滑">🌧️ 雨天</button>
+            </div>
+            <footer id="copilot-input-area">
+                <div id="copilot-input-wrapper">
+                    <input type="text" id="copilot-input" placeholder="輸入訊息..." maxlength="100" autocomplete="off">
+                    <span id="copilot-char-count">0/100</span>
+                </div>
+                <button id="copilot-send" disabled title="送出訊息">
+                    <span class="send-icon">➤</span>
+                </button>
+            </footer>
+        </section>
+
         <!-- ===== 半透明背景遮罩 ===== -->
         <div id="sheet-backdrop"></div>
 
@@ -139,5 +186,6 @@
     <script src="{{ url_for('static', filename='js/danmaku.js') }}"></script>
     <script src="{{ url_for('static', filename='js/pinned.js') }}"></script>
     <script src="{{ url_for('static', filename='js/quickbtn.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/copilot-chat.js') }}"></script>
 </body>
 </html>
