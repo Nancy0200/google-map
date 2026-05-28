@@ -20,6 +20,7 @@
     const panel = document.getElementById('copilot-panel');
     const toggleBtn = document.getElementById('copilot-toggle');
     const minimizeBtn = document.getElementById('copilot-minimize');
+    const closeBtn = document.getElementById('copilot-close');
     const copilotHeader = document.getElementById('copilot-header');
     const messagesContainer = document.getElementById('copilot-messages');
     const emptyState = document.getElementById('copilot-empty');
@@ -138,6 +139,14 @@
         minimizeBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             minimizePanel();
+        });
+    }
+
+    // Close button click
+    if (closeBtn) {
+        closeBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            closePanel();
         });
     }
 
