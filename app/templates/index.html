@@ -19,16 +19,8 @@
     <div id="app">
         <!-- ===== 全螢幕地圖 ===== -->
         <main id="nav-panel">
-            <!-- 模擬地圖背景（CSS 繪製） -->
-            <div id="map-bg">
-                <div class="map-grid"></div>
-                <div class="map-road map-road-h"></div>
-                <div class="map-road map-road-v"></div>
-                <div class="map-label" style="top:18%;left:12%">🏫 中正大學</div>
-                <div class="map-label" style="top:45%;left:55%">🏪 7-11</div>
-                <div class="map-label" style="top:72%;left:30%">⛽ 加油站</div>
-                <div class="map-label" style="top:25%;left:75%">🏥 醫院</div>
-            </div>
+            <!-- 動態導航 Canvas -->
+            <canvas id="map-canvas"></canvas>
 
             <!-- 彈幕層 -->
             <div id="danmaku-layer"></div>
@@ -146,6 +138,7 @@
     <!-- SocketIO client library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
     <!-- App modules -->
+    <script src="{{ url_for('static', filename='js/navmap.js') }}"></script>
     <script src="{{ url_for('static', filename='js/speed.js') }}"></script>
     <script src="{{ url_for('static', filename='js/cooldown.js') }}"></script>
     <script src="{{ url_for('static', filename='js/filter.js') }}"></script>

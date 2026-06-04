@@ -72,61 +72,14 @@ html, body {
     z-index: 1;
 }
 
-/* --- Simulated dark map background --- */
-#map-bg {
+/* --- Navigation Canvas --- */
+#map-canvas {
     position: absolute;
     inset: 0;
+    width: 100%;
+    height: 100%;
     z-index: 0;
-    background:
-        radial-gradient(ellipse at 30% 40%, rgba(108, 99, 255, 0.05) 0%, transparent 60%),
-        radial-gradient(ellipse at 70% 70%, rgba(0, 210, 255, 0.04) 0%, transparent 50%),
-        var(--bg-dark);
-}
-
-.map-grid {
-    position: absolute;
-    inset: 0;
-    background-image:
-        linear-gradient(rgba(42, 45, 64, 0.4) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(42, 45, 64, 0.4) 1px, transparent 1px);
-    background-size: 60px 60px;
-}
-
-/* Simulated roads */
-.map-road {
-    position: absolute;
-    background: rgba(108, 99, 255, 0.12);
-    border-radius: 4px;
-}
-.map-road-h {
-    top: 50%;
-    left: 0;
-    right: 0;
-    height: 28px;
-    transform: translateY(-50%);
-    box-shadow: 0 0 30px rgba(108, 99, 255, 0.15);
-}
-.map-road-v {
-    left: 40%;
-    top: 0;
-    bottom: 0;
-    width: 24px;
-    transform: translateX(-50%);
-    box-shadow: 0 0 30px rgba(108, 99, 255, 0.15);
-}
-
-.map-label {
-    position: absolute;
-    font-size: 13px;
-    color: var(--text-secondary);
-    padding: 4px 10px;
-    background: rgba(30, 32, 48, 0.85);
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--border);
-    backdrop-filter: blur(4px);
-    white-space: nowrap;
-    user-select: none;
-    z-index: 1;
+    display: block;
 }
 
 /* =====================================================
