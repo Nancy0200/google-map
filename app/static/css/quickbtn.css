@@ -8,6 +8,7 @@
     bottom: calc(var(--sheet-peek, 54px) + 16px);
     left: 20px;
     display: flex;
+    flex-direction: row;
     align-items: flex-end;
     gap: 10px;
     z-index: 50;
@@ -84,7 +85,14 @@
     100% { transform: scale(1.4); opacity: 0; }
 }
 
-/* --- Menu Panel (expands upward) --- */
+/* --- Menu Wrap (contains toggle + panel) --- */
+#menu-wrap {
+    position: relative;
+    display: flex;
+    align-items: flex-end;
+}
+
+/* --- Menu Panel (expands upward from menu-wrap) --- */
 #menu-panel {
     position: absolute;
     bottom: 78px;
@@ -204,71 +212,103 @@
     to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-/* --- Pinned Slots --- */
-#pinned-slots {
+/* --- Preset Quick Slots (3 fixed bubbles to the right) --- */
+#preset-slots {
     display: flex;
+    flex-direction: row;
     gap: 10px;
     align-items: flex-end;
 }
 
-.pinned-btn {
-    width: 52px;
-    height: 52px;
+.preset-btn {
+    width: 56px;
+    height: 56px;
     border-radius: var(--radius-round);
-    border: 1px dashed var(--border);
-    background: rgba(22, 24, 34, 0.7);
-    backdrop-filter: blur(10px);
-    color: var(--text-muted);
-    font-size: 22px;
+    border: 1.5px solid rgba(108, 99, 255, 0.35);
+    background: rgba(22, 24, 40, 0.88);
+    backdrop-filter: blur(14px);
+    color: var(--text-primary);
     cursor: pointer;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    transition: all 0.25s ease;
+    gap: 2px;
+    transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
     position: relative;
+    box-shadow:
+        0 0 14px rgba(108, 99, 255, 0.12),
+        0 4px 10px rgba(0, 0, 0, 0.35),
+        inset 0 1px 1px rgba(255, 255, 255, 0.05);
 }
 
-.pinned-btn:hover {
+.preset-btn:hover {
     border-color: var(--accent);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    transform: translateY(-4px) scale(1.08);
+    box-shadow:
+        0 0 24px rgba(108, 99, 255, 0.3),
+        0 8px 20px rgba(0, 0, 0, 0.45);
 }
 
-.pinned-btn:active {
-    transform: scale(0.93);
+.preset-btn:active {
+    transform: scale(0.9);
 }
 
-.pinned-btn.has-pin {
-    border-style: solid;
-    border-color: rgba(108, 99, 255, 0.4);
-    background: rgba(30, 25, 60, 0.85);
-    color: var(--text-primary);
-    box-shadow: 0 0 12px rgba(108, 99, 255, 0.1);
+/* Red variant for speed < 30 */
+.preset-btn--red {
+    border-color: rgba(255, 82, 82, 0.4);
+    box-shadow:
+        0 0 14px rgba(255, 82, 82, 0.15),
+        0 4px 10px rgba(0, 0, 0, 0.35);
+}
+.preset-btn--red:hover {
+    border-color: var(--danger);
+    box-shadow:
+        0 0 24px rgba(255, 82, 82, 0.35),
+        0 8px 20px rgba(0, 0, 0, 0.45);
 }
 
-.pinned-btn.has-pin:hover {
-    border-color: var(--accent);
-    box-shadow: 0 0 20px rgba(108, 99, 255, 0.25);
+/* Pop-in animation for preset buttons */
+.preset-btn:nth-child(1) { animation: preset-pop 0.4s 0.05s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.preset-btn:nth-child(2) { animation: preset-pop 0.4s 0.10s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.preset-btn:nth-child(3) { animation: preset-pop 0.4s 0.15s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+
+@keyframes preset-pop {
+    from { opacity: 0; transform: scale(0.6) translateY(12px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
 }
 
-/* Flashing state when choosing a slot to pin */
-.pinned-btn.choosing {
-    animation: slot-flash 0.6s ease-in-out infinite alternate;
-    border-color: var(--warning);
-}
-
-@keyframes slot-flash {
-    from { box-shadow: 0 0 8px rgba(255, 171, 64, 0.3); border-color: var(--warning); }
-    to   { box-shadow: 0 0 20px rgba(255, 171, 64, 0.6); border-color: #ffc570; }
-}
-
-.pinned-icon {
+.preset-icon {
+    font-size: 18px;
     line-height: 1;
 }
 
-/* Cooldown overlay on pinned buttons */
-.pinned-btn .cooldown-overlay,
-.menu-option .cooldown-overlay {
+.preset-label {
+    font-size: 9px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+}
+
+/* Ripple on tap */
+.preset-btn.tapped {
+    animation: preset-tap 0.3s ease;
+}
+@keyframes preset-tap {
+    0%   { transform: scale(1); }
+    40%  { transform: scale(0.85); }
+    100% { transform: scale(1); }
+}
+
+/* Cooldown state */
+.preset-btn.disabled {
+    opacity: 0.4;
+    pointer-events: none;
+    filter: grayscale(0.6);
+}
+
+.preset-btn .cooldown-overlay {
     position: absolute;
     inset: 0;
     background: rgba(15, 17, 23, 0.75);
@@ -282,80 +322,6 @@
     pointer-events: none;
 }
 
-/* --- Pin Overlay (slot selection prompt) --- */
-#pin-overlay {
-    position: absolute;
-    inset: 0;
-    background: rgba(15, 17, 23, 0.7);
-    backdrop-filter: blur(6px);
-    z-index: 100;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    animation: fadeIn 0.2s ease;
-}
-
-#pin-overlay.hidden {
-    display: none;
-}
-
-#pin-prompt {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 24px 28px;
-    text-align: center;
-    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
-}
-
-#pin-prompt p {
-    font-size: 15px;
-    font-weight: 600;
-    margin-bottom: 16px;
-    color: var(--text-primary);
-}
-
-#pin-prompt-slots {
-    display: flex;
-    gap: 12px;
-    justify-content: center;
-    margin-bottom: 14px;
-}
-
-.pin-slot-choice {
-    width: 60px;
-    height: 60px;
-    border-radius: var(--radius);
-    border: 2px solid var(--border);
-    background: var(--bg-input);
-    color: var(--text-primary);
-    font-size: 14px;
-    font-weight: 600;
-    font-family: var(--font-main);
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-.pin-slot-choice:hover {
-    border-color: var(--accent);
-    background: rgba(108, 99, 255, 0.15);
-    transform: translateY(-2px);
-}
-
-#pin-cancel {
-    padding: 6px 20px;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    background: transparent;
-    color: var(--text-secondary);
-    font-size: 13px;
-    font-family: var(--font-main);
-    cursor: pointer;
-    transition: all 0.2s;
-}
-#pin-cancel:hover {
-    border-color: var(--danger);
-    color: var(--danger);
-}
 
 /* --- Cooldown Toast --- */
 #cooldown-toast {
