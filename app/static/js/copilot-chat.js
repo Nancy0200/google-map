@@ -30,12 +30,15 @@
     const quickTags = document.querySelectorAll('.quick-tag');
     const typingIndicator = document.getElementById('copilot-typing');
     const unreadDot = document.getElementById('copilot-unread');
+    const expandTab = document.getElementById('chat-expand-tab');
+    const expandBadge = document.getElementById('expand-badge');
 
     if (!panel || !toggleBtn) return;
 
     // State: 'closed' | 'open' | 'minimized'
     let panelState = 'closed';
     let hasMessages = false;
+    let unreadCount = 0;
     const MAX_CHARS = 100;
 
     /** Check if viewport is mobile-sized. */
@@ -49,8 +52,8 @@
         panelState = newState;
 
         // Clear all state classes
-        panel.classList.remove('open', 'minimized');
-        toggleBtn.classList.remove('open', 'minimized');
+        panel.classList.remove('open', 'minimized', 'collapsed-right');
+        toggleBtn.classList.remove('open', 'minimized', 'hidden');
 
         switch (newState) {
             case 'open':
@@ -58,6 +61,11 @@
                 toggleBtn.classList.add('open');
                 // Clear unread
                 if (unreadDot) unreadDot.classList.add('hidden');
+                if (expandTab) expandTab.classList.add('hidden');
+                // Reset unread count
+                unreadCount = 0;
+                if (expandBadge) expandBadge.textContent = '0';
+                if (expandTab) expandTab.classList.remove('pulse');
                 // Focus input
                 setTimeout(() => {
                     if (inputEl) inputEl.focus();
@@ -68,11 +76,15 @@
             case 'minimized':
                 panel.classList.add('minimized');
                 toggleBtn.classList.add('minimized');
+                if (expandTab) expandTab.classList.add('hidden');
                 if (inputEl) inputEl.blur();
                 break;
 
             case 'closed':
             default:
+                panel.classList.add('collapsed-right');
+                toggleBtn.classList.add('hidden');
+                if (expandTab) expandTab.classList.remove('hidden');
                 if (inputEl) inputEl.blur();
                 break;
         }
@@ -291,8 +303,16 @@
 
         if (!isHistory) {
             scrollToBottom();
-            // Show unread dot if panel is not fully open
-            if (panelState !== 'open' && unreadDot) {
+            // Show unread badge if panel is closed/minimized
+            if (panelState === 'closed') {
+                unreadCount++;
+                if (expandBadge) {
+                    expandBadge.textContent = unreadCount;
+                }
+                if (expandTab) {
+                    expandTab.classList.add('pulse');
+                }
+            } else if (panelState !== 'open' && unreadDot) {
                 unreadDot.classList.remove('hidden');
             }
         }
@@ -319,6 +339,15 @@
         const content = inputEl.value.trim();
         if (!content) return;
         if (content.length > MAX_CHARS) return;
+
+        // Content filter check
+        if (window.ContentFilter) {
+            const result = window.ContentFilter.check(content);
+            if (!result.ok) {
+                showFilterWarning(result.reason);
+                return;
+            }
+        }
 
         if (window.Cooldown && !window.Cooldown.canSend()) {
             window.Cooldown.showToast();
@@ -404,6 +433,53 @@
             }
         });
     });
+
+    // Expand tab click
+    if (expandTab) {
+        expandTab.addEventListener('click', (e) => {
+            e.stopPropagation();
+            openPanel();
+        });
+    }
+
+    /** Display validation warning toast */
+    function showFilterWarning(reason) {
+        let toast = document.getElementById('filter-warning-toast');
+        if (!toast) {
+            toast = document.createElement('div');
+            toast.id = 'filter-warning-toast';
+            toast.style.cssText = `
+                position: absolute;
+                bottom: 80px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: rgba(255, 171, 64, 0.95);
+                color: #121426;
+                font-weight: 600;
+                padding: 10px 16px;
+                border-radius: 20px;
+                font-size: 12px;
+                z-index: 9999;
+                white-space: nowrap;
+                box-shadow: 0 4px 12px rgba(255, 171, 64, 0.3);
+                transition: opacity 0.3s;
+            `;
+            const appEl = document.getElementById('app');
+            if (appEl) appEl.appendChild(toast);
+            else document.body.appendChild(toast);
+        }
+        toast.textContent = `⚠️ ${reason}`;
+        toast.style.display = 'block';
+        toast.style.opacity = '1';
+        
+        if (inputEl) inputEl.style.borderColor = 'var(--danger)';
+
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            setTimeout(() => { toast.style.display = 'none'; }, 300);
+            if (inputEl) inputEl.style.borderColor = '';
+        }, 3000);
+    }
 
     // ===================== Public API =====================
     window.CopilotChat = {

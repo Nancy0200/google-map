@@ -601,3 +601,79 @@
     content: ' — 點擊展開';
     color: var(--text-muted);
 }
+
+/* --- Collapsed to Right state --- */
+#copilot-panel.collapsed-right {
+    transform: translateX(100%);
+}
+
+#copilot-toggle.hidden {
+    display: none !important;
+}
+
+/* --- Expand Button / Tab (on the right edge) --- */
+#chat-expand-tab {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 42px;
+    height: 70px;
+    border-radius: 12px 0 0 12px;
+    background: linear-gradient(135deg, var(--accent), #7c3aed);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-right: none;
+    color: #ffffff;
+    font-size: 20px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 60;
+    box-shadow: -4px 0 15px rgba(124, 58, 237, 0.4);
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s, width 0.2s;
+}
+
+#chat-expand-tab.hidden {
+    transform: translate(100%, -50%);
+    opacity: 0;
+    pointer-events: none;
+}
+
+#chat-expand-tab:hover {
+    background: linear-gradient(135deg, #7c3aed, #6d28d9);
+    width: 48px;
+}
+
+/* Unread Badge on Expand Tab */
+#chat-expand-tab .expand-badge {
+    position: absolute;
+    top: -8px;
+    left: -8px;
+    background: var(--danger);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 10px;
+    border: 1px solid var(--bg-dark);
+    box-shadow: 0 0 8px rgba(255, 82, 82, 0.6);
+}
+
+#chat-expand-tab .expand-badge:empty,
+#chat-expand-tab .expand-badge[value="0"],
+#chat-expand-tab .expand-badge:contains("0") {
+    display: none;
+}
+
+/* Pulse animation for new message */
+@keyframes badge-pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.15); }
+}
+
+#chat-expand-tab.pulse {
+    animation: badge-pulse 1.2s infinite ease-in-out;
+}
+

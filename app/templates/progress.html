@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Road Bulletin — 即時路況留言板開發進度總覽">
+    <title>Road Bulletin — 開發進度儀表板</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/progress.css') }}">
+</head>
+<body>
+    <div class="progress-app">
+        <!-- ===== Animated background ===== -->
+        <div class="bg-glow bg-glow-1"></div>
+        <div class="bg-glow bg-glow-2"></div>
+        <div class="bg-glow bg-glow-3"></div>
+
+        <!-- ===== Header ===== -->
+        <header class="header">
+            <div class="header-inner">
+                <div class="header-left">
+                    <div class="logo-mark">
+                        <span class="logo-icon">🛣️</span>
+                        <div class="logo-pulse"></div>
+                    </div>
+                    <div>
+                        <h1 class="title">Road Bulletin</h1>
+                        <p class="subtitle">即時路況留言板 — 開發進度儀表板</p>
+                    </div>
+                </div>
+                <a href="/" class="back-link" title="回到主應用">
+                    <span>← 回到應用</span>
+                </a>
+            </div>
+        </header>
+
+        <!-- ===== Main content ===== -->
+        <main class="main">
+
+            <!-- ===== Overall Progress Ring ===== -->
+            <section class="overview-section">
+                <div class="ring-card">
+                    <div class="ring-container">
+                        <svg viewBox="0 0 160 160" class="progress-ring">
+                            <defs>
+                                <linearGradient id="ring-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" stop-color="#6c63ff"/>
+                                    <stop offset="100%" stop-color="#00d2ff"/>
+                                </linearGradient>
+                            </defs>
+                            <circle class="ring-bg" cx="80" cy="80" r="70" />
+                            <circle class="ring-fg" cx="80" cy="80" r="70"
+                                    stroke-dasharray="439.82"
+                                    stroke-dashoffset="109.96" />
+                        </svg>
+                        <div class="ring-label">
+                            <span class="ring-pct">75<small>%</small></span>
+                            <span class="ring-text">整體完成</span>
+                        </div>
+                    </div>
+                    <div class="ring-stats">
+                        <div class="stat-item stat-done">
+                            <span class="stat-num">15</span>
+                            <span class="stat-label">已完成</span>
+                        </div>
+                        <div class="stat-item stat-wip">
+                            <span class="stat-num">3</span>
+                            <span class="stat-label">進行中</span>
+                        </div>
+                        <div class="stat-item stat-todo">
+                            <span class="stat-num">2</span>
+                            <span class="stat-label">待開發</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Phase summary cards -->
+                <div class="phase-cards">
+                    <div class="phase-card completed">
+                        <div class="phase-icon">📋</div>
+                        <div class="phase-info">
+                            <h3>規劃階段</h3>
+                            <p>PRD / 架構 / 流程圖</p>
+                        </div>
+                        <div class="phase-badge done-badge">✓ 完成</div>
+                    </div>
+                    <div class="phase-card completed">
+                        <div class="phase-icon">🗄️</div>
+                        <div class="phase-info">
+                            <h3>資料庫設計</h3>
+                            <p>SQLite Schema / Model</p>
+                        </div>
+                        <div class="phase-badge done-badge">✓ 完成</div>
+                    </div>
+                    <div class="phase-card completed">
+                        <div class="phase-icon">⚙️</div>
+                        <div class="phase-info">
+                            <h3>後端開發</h3>
+                            <p>Flask 路由 / SocketIO</p>
+                        </div>
+                        <div class="phase-badge done-badge">✓ 完成</div>
+                    </div>
+                    <div class="phase-card active">
+                        <div class="phase-icon">🎨</div>
+                        <div class="phase-info">
+                            <h3>前端開發</h3>
+                            <p>UI / 互動 / 動畫</p>
+                        </div>
+                        <div class="phase-badge wip-badge">🔧 進行中</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ===== Feature Progress Table ===== -->
+            <section class="features-section">
+                <h2 class="section-title">
+                    <span class="section-icon">🎯</span>
+                    功能開發進度
+                </h2>
+
+                <!-- Must Have -->
+                <div class="feature-group">
+                    <div class="group-header">
+                        <h3>Must Have — 核心功能</h3>
+                        <div class="group-bar-wrap">
+                            <div class="group-bar" style="--pct: 100%"></div>
+                        </div>
+                        <span class="group-pct">100%</span>
+                    </div>
+                    <div class="feature-list">
+                        <div class="feature-row done">
+                            <span class="feat-status">✅</span>
+                            <span class="feat-name">單頁整合介面（左側導航 + 右側留言板）</span>
+                            <span class="feat-tag tag-done">已完成</span>
+                        </div>
+                        <div class="feature-row done">
+                            <span class="feat-status">✅</span>
+                            <span class="feat-name">即時路況留言板（WebSocket 即時更新）</span>
+                            <span class="feat-tag tag-done">已完成</span>
+                        </div>
+                        <div class="feature-row done">
+                            <span class="feat-status">✅</span>
+                            <span class="feat-name">彈幕顯示（留言同步覆蓋於導航畫面）</span>
+                            <span class="feat-tag tag-done">已完成</span>
+                        </div>
+                        <div class="feature-row done">
+                            <span class="feat-status">✅</span>
+                            <span class="feat-name">快速回報主選單（速度燈號 + 車禍 + 掉落物）</span>
+                            <span class="feat-tag tag-done">已完成</span>
+                        </div>
+                        <div class="feature-row done">
+                            <span class="feat-status">✅</span>
+                            <span class="feat-name">釘選按鈕（3 格，儲存至 localStorage）</span>
+                            <span class="feat-tag tag-done">已完成</span>
+                        </div>
+                        <div class="feature-row done">
+                            <span class="feat-status">✅</span>
+                            <span class="feat-name">留言儲存至 SQLite 資料庫</span>
+                            <span class="feat-tag tag-done">已完成</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Should Have -->
+                <div class="feature-group">
+                    <div class="group-header">
+                        <h3>Should Have — 加強功能</h3>
+                        <div class="group-bar-wrap">
+                            <div class="group-bar bar-wip" style="--pct: 67%"></div>
+                        </div>
+                        <span class="group-pct">67%</span>
+                    </div>
+                    <div class="feature-list">
+                        <div class="feature-row done">
+                            <span class="feat-status">✅</span>
+                            <span class="feat-name">留言類型標籤（速度 / 車禍 / 掉落物 / 其他）</span>
+                            <span class="feat-tag tag-done">已完成</span>
+                        </div>
+                        <div class="feature-row done">
+                            <span class="feat-status">✅</span>
+                            <span class="feat-name">發送冷卻時間機制（60 秒內限發 3 則）</span>
+                            <span class="feat-tag tag-done">已完成</span>
+                        </div>
+                        <div class="feature-row wip">
+                            <span class="feat-status">🔧</span>
+                            <span class="feat-name">彈幕動畫效果（CSS 水平滾動）</span>
+                            <span class="feat-tag tag-wip">進行中</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Nice to Have -->
+                <div class="feature-group">
+                    <div class="group-header">
+                        <h3>Nice to Have — 進階功能</h3>
+                        <div class="group-bar-wrap">
+                            <div class="group-bar bar-todo" style="--pct: 0%"></div>
+                        </div>
+                        <span class="group-pct">0%</span>
+                    </div>
+                    <div class="feature-list">
+                        <div class="feature-row todo">
+                            <span class="feat-status">⬜</span>
+                            <span class="feat-name">真實地圖整合（Google Maps / OpenStreetMap）</span>
+                            <span class="feat-tag tag-todo">待開發</span>
+                        </div>
+                        <div class="feature-row todo">
+                            <span class="feat-status">⬜</span>
+                            <span class="feat-name">留言按讚 / 確認功能</span>
+                            <span class="feat-tag tag-todo">待開發</span>
+                        </div>
+                        <div class="feature-row todo">
+                            <span class="feat-status">⬜</span>
+                            <span class="feat-name">使用者暱稱設定</span>
+                            <span class="feat-tag tag-todo">待開發</span>
+                        </div>
+                        <div class="feature-row todo">
+                            <span class="feat-status">⬜</span>
+                            <span class="feat-name">推播通知（前方有新留言時提示）</span>
+                            <span class="feat-tag tag-todo">待開發</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ===== Tech Stack & File Map ===== -->
+            <section class="tech-section">
+                <h2 class="section-title">
+                    <span class="section-icon">🏗️</span>
+                    技術架構總覽
+                </h2>
+                <div class="tech-grid">
+                    <!-- Backend -->
+                    <div class="tech-card">
+                        <div class="tech-card-header">
+                            <span class="tech-emoji">🐍</span>
+                            <h3>後端</h3>
+                        </div>
+                        <ul class="tech-list">
+                            <li><span class="tech-dot dot-green"></span>Python Flask 3.x</li>
+                            <li><span class="tech-dot dot-green"></span>Flask-SocketIO 5.x</li>
+                            <li><span class="tech-dot dot-green"></span>SQLite (messages table)</li>
+                            <li><span class="tech-dot dot-green"></span>Jinja2 模板引擎</li>
+                        </ul>
+                    </div>
+                    <!-- Frontend -->
+                    <div class="tech-card">
+                        <div class="tech-card-header">
+                            <span class="tech-emoji">🎨</span>
+                            <h3>前端</h3>
+                        </div>
+                        <ul class="tech-list">
+                            <li><span class="tech-dot dot-green"></span>HTML5 + CSS3</li>
+                            <li><span class="tech-dot dot-green"></span>Vanilla JavaScript</li>
+                            <li><span class="tech-dot dot-green"></span>Socket.IO Client</li>
+                            <li><span class="tech-dot dot-green"></span>Inter + Noto Sans TC 字型</li>
+                        </ul>
+                    </div>
+                    <!-- Modules -->
+                    <div class="tech-card">
+                        <div class="tech-card-header">
+                            <span class="tech-emoji">📦</span>
+                            <h3>前端模組</h3>
+                        </div>
+                        <ul class="tech-list">
+                            <li><span class="tech-dot dot-green"></span>socket.js — WebSocket 連線</li>
+                            <li><span class="tech-dot dot-green"></span>danmaku.js — 彈幕動畫</li>
+                            <li><span class="tech-dot dot-green"></span>quickbtn.js — 快速回報按鈕</li>
+                            <li><span class="tech-dot dot-green"></span>pinned.js — 釘選按鈕管理</li>
+                            <li><span class="tech-dot dot-green"></span>cooldown.js — 冷卻機制</li>
+                            <li><span class="tech-dot dot-green"></span>speed.js — 速度選項定義</li>
+                        </ul>
+                    </div>
+                    <!-- Docs -->
+                    <div class="tech-card">
+                        <div class="tech-card-header">
+                            <span class="tech-emoji">📄</span>
+                            <h3>文件</h3>
+                        </div>
+                        <ul class="tech-list">
+                            <li><span class="tech-dot dot-green"></span>PRD.md — 產品需求文件</li>
+                            <li><span class="tech-dot dot-green"></span>ARCHITECTURE.md — 架構設計</li>
+                            <li><span class="tech-dot dot-green"></span>FLOWCHART.md — 流程圖</li>
+                            <li><span class="tech-dot dot-grey"></span>DB_DESIGN.md — 資料庫設計 (待補)</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ===== File Structure ===== -->
+            <section class="structure-section">
+                <h2 class="section-title">
+                    <span class="section-icon">📁</span>
+                    專案結構
+                </h2>
+                <div class="file-tree-card">
+                    <pre class="file-tree"><code>road-bulletin/
+├── app/
+│   ├── __init__.py          <span class="ft-ok">✔</span>  Flask 工廠函式
+│   ├── models/
+│   │   ├── __init__.py      <span class="ft-ok">✔</span>  DB 初始化
+│   │   └── message.py       <span class="ft-ok">✔</span>  Message CRUD
+│   ├── routes/
+│   │   ├── main.py          <span class="ft-ok">✔</span>  主頁面路由 /
+│   │   └── api.py           <span class="ft-ok">✔</span>  REST + SocketIO
+│   ├── templates/
+│   │   ├── index.html       <span class="ft-ok">✔</span>  主應用頁面
+│   │   └── progress.html    <span class="ft-ok">✔</span>  進度儀表板
+│   └── static/
+│       ├── css/
+│       │   ├── style.css    <span class="ft-ok">✔</span>  全域樣式
+│       │   ├── quickbtn.css <span class="ft-ok">✔</span>  快速按鈕
+│       │   ├── danmaku.css  <span class="ft-ok">✔</span>  彈幕動畫
+│       │   └── progress.css <span class="ft-ok">✔</span>  進度頁樣式
+│       └── js/
+│           ├── socket.js    <span class="ft-ok">✔</span>  SocketIO 連線
+│           ├── danmaku.js   <span class="ft-ok">✔</span>  彈幕產生
+│           ├── quickbtn.js  <span class="ft-ok">✔</span>  主選單邏輯
+│           ├── pinned.js    <span class="ft-ok">✔</span>  釘選管理
+│           ├── cooldown.js  <span class="ft-ok">✔</span>  冷卻機制
+│           └── speed.js     <span class="ft-ok">✔</span>  速度選項
+├── docs/
+│   ├── PRD.md               <span class="ft-ok">✔</span>
+│   ├── ARCHITECTURE.md      <span class="ft-ok">✔</span>
+│   └── FLOWCHART.md         <span class="ft-ok">✔</span>
+├── app.py                   <span class="ft-ok">✔</span>  入口
+├── config.py                <span class="ft-ok">✔</span>  設定
+└── requirements.txt         <span class="ft-ok">✔</span></code></pre>
+                </div>
+            </section>
+
+            <!-- ===== Timeline ===== -->
+            <section class="timeline-section">
+                <h2 class="section-title">
+                    <span class="section-icon">📅</span>
+                    開發時間軸
+                </h2>
+                <div class="timeline">
+                    <div class="timeline-item done">
+                        <div class="tl-dot"></div>
+                        <div class="tl-content">
+                            <div class="tl-date">Phase 1</div>
+                            <h3>需求分析與規劃</h3>
+                            <p>完成 PRD、架構文件、流程圖</p>
+                        </div>
+                    </div>
+                    <div class="timeline-item done">
+                        <div class="tl-dot"></div>
+                        <div class="tl-content">
+                            <div class="tl-date">Phase 2</div>
+                            <h3>資料庫設計與後端開發</h3>
+                            <p>SQLite Schema、Flask 路由、SocketIO 即時通訊</p>
+                        </div>
+                    </div>
+                    <div class="timeline-item done">
+                        <div class="tl-dot"></div>
+                        <div class="tl-content">
+                            <div class="tl-date">Phase 3</div>
+                            <h3>前端 UI 開發</h3>
+                            <p>深色主題介面、快速回報按鈕、釘選功能、冷卻機制</p>
+                        </div>
+                    </div>
+                    <div class="timeline-item active">
+                        <div class="tl-dot"></div>
+                        <div class="tl-content">
+                            <div class="tl-date">Phase 4</div>
+                            <h3>動畫效果與體驗優化</h3>
+                            <p>彈幕水平滾動動畫、留言板互動、響應式佈局</p>
+                        </div>
+                    </div>
+                    <div class="timeline-item upcoming">
+                        <div class="tl-dot"></div>
+                        <div class="tl-content">
+                            <div class="tl-date">Phase 5</div>
+                            <h3>測試與部署</h3>
+                            <p>功能測試、效能優化、部署上線</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+
+        <!-- ===== Footer ===== -->
+        <footer class="footer">
+            <p>Road Bulletin © 2026 — 即時路況留言板</p>
+            <p class="footer-sub">由 Antigravity AI Agent 協助開發</p>
+        </footer>
+    </div>
+
+    <script>
+        // Animate progress ring on load
+        document.addEventListener('DOMContentLoaded', () => {
+            const ring = document.querySelector('.ring-fg');
+            if (ring) {
+                const circumference = 2 * Math.PI * 70; // 439.82
+                const pct = 75;
+                const offset = circumference * (1 - pct / 100);
+                // Start from full offset, animate to target
+                ring.style.strokeDashoffset = circumference;
+                requestAnimationFrame(() => {
+                    ring.style.transition = 'stroke-dashoffset 1.5s cubic-bezier(0.4, 0, 0.2, 1)';
+                    ring.style.strokeDashoffset = offset;
+                });
+            }
+
+            // Animate progress bars
+            document.querySelectorAll('.group-bar').forEach((bar) => {
+                const pct = bar.style.getPropertyValue('--pct');
+                bar.style.width = '0%';
+                requestAnimationFrame(() => {
+                    bar.style.transition = 'width 1.2s cubic-bezier(0.4, 0, 0.2, 1)';
+                    bar.style.width = pct;
+                });
+            });
+
+            // Stagger feature rows entrance
+            document.querySelectorAll('.feature-row').forEach((row, i) => {
+                row.style.animationDelay = `${i * 0.04}s`;
+            });
+        });
+    </script>
+</body>
+</html>
