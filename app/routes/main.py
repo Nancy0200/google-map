@@ -9,3 +9,9 @@ main_bp = Blueprint("main", __name__)
 def index():
     """Render the single-page Road Bulletin interface."""
     return render_template("index.html")
+
+
+@main_bp.route("/progress")
+def progress():
+    """Render the project progress dashboard."""
+    return render_template("progress.html")
