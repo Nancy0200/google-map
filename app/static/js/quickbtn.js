@@ -52,11 +52,17 @@
         }
 
         if (window.Cooldown) window.Cooldown.record();
+
+        // Attach current road name
+        const roadSeg = window.Navigation ? window.Navigation.getCurrentSegment() : null;
+
         if (window.Socket) {
             window.Socket.sendMessage({
                 content: opt.content,
                 category: opt.category,
                 speed_level: opt.speed_level,
+                road_name: roadSeg ? roadSeg.road : null,
+                road_city: roadSeg ? roadSeg.city : null,
             });
         }
 

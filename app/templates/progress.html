@@ -53,24 +53,24 @@
                             <circle class="ring-bg" cx="80" cy="80" r="70" />
                             <circle class="ring-fg" cx="80" cy="80" r="70"
                                     stroke-dasharray="439.82"
-                                    stroke-dashoffset="109.96" />
+                                    stroke-dashoffset="35.18" />
                         </svg>
                         <div class="ring-label">
-                            <span class="ring-pct">75<small>%</small></span>
+                            <span class="ring-pct">92<small>%</small></span>
                             <span class="ring-text">整體完成</span>
                         </div>
                     </div>
                     <div class="ring-stats">
                         <div class="stat-item stat-done">
-                            <span class="stat-num">15</span>
+                            <span class="stat-num">22</span>
                             <span class="stat-label">已完成</span>
                         </div>
                         <div class="stat-item stat-wip">
-                            <span class="stat-num">3</span>
+                            <span class="stat-num">1</span>
                             <span class="stat-label">進行中</span>
                         </div>
                         <div class="stat-item stat-todo">
-                            <span class="stat-num">2</span>
+                            <span class="stat-num">1</span>
                             <span class="stat-label">待開發</span>
                         </div>
                     </div>
@@ -163,14 +163,47 @@
                     </div>
                 </div>
 
+                <!-- Google Maps 導航整合特製功能 -->
+                <div class="feature-group">
+                    <div class="group-header">
+                        <h3>Google Maps 導航整合與特製功能</h3>
+                        <div class="group-bar-wrap">
+                            <div class="group-bar" style="--pct: 100%"></div>
+                        </div>
+                        <span class="group-pct">100%</span>
+                    </div>
+                    <div class="feature-list">
+                        <div class="feature-row done">
+                            <span class="feat-status">✅</span>
+                            <span class="feat-name">精準還原 Google Maps 開車導航畫面（上半部 3D 行車街景與下半部 2D 地圖）</span>
+                            <span class="feat-tag tag-done">已完成</span>
+                        </div>
+                        <div class="feature-row done">
+                            <span class="feat-status">✅</span>
+                            <span class="feat-name">真實導航路線模擬（由 台中市逢甲大學 至 台北101）</span>
+                            <span class="feat-tag tag-done">已完成</span>
+                        </div>
+                        <div class="feature-row done">
+                            <span class="feat-status">✅</span>
+                            <span class="feat-name">每個留言與回報自動帶入目前所在的道路名稱與城市</span>
+                            <span class="feat-tag tag-done">已完成</span>
+                        </div>
+                        <div class="feature-row done">
+                            <span class="feat-status">✅</span>
+                            <span class="feat-name">彈幕呈現反應速度優化（發送後延遲 2 秒才於畫面上出現）</span>
+                            <span class="feat-tag tag-done">已完成</span>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Should Have -->
                 <div class="feature-group">
                     <div class="group-header">
                         <h3>Should Have — 加強功能</h3>
                         <div class="group-bar-wrap">
-                            <div class="group-bar bar-wip" style="--pct: 67%"></div>
+                            <div class="group-bar" style="--pct: 100%"></div>
                         </div>
-                        <span class="group-pct">67%</span>
+                        <span class="group-pct">100%</span>
                     </div>
                     <div class="feature-list">
                         <div class="feature-row done">
@@ -183,10 +216,10 @@
                             <span class="feat-name">發送冷卻時間機制（60 秒內限發 3 則）</span>
                             <span class="feat-tag tag-done">已完成</span>
                         </div>
-                        <div class="feature-row wip">
-                            <span class="feat-status">🔧</span>
+                        <div class="feature-row done">
+                            <span class="feat-status">✅</span>
                             <span class="feat-name">彈幕動畫效果（CSS 水平滾動）</span>
-                            <span class="feat-tag tag-wip">進行中</span>
+                            <span class="feat-tag tag-done">已完成</span>
                         </div>
                     </div>
                 </div>
@@ -196,15 +229,15 @@
                     <div class="group-header">
                         <h3>Nice to Have — 進階功能</h3>
                         <div class="group-bar-wrap">
-                            <div class="group-bar bar-todo" style="--pct: 0%"></div>
+                            <div class="group-bar bar-todo" style="--pct: 25%"></div>
                         </div>
-                        <span class="group-pct">0%</span>
+                        <span class="group-pct">25%</span>
                     </div>
                     <div class="feature-list">
-                        <div class="feature-row todo">
-                            <span class="feat-status">⬜</span>
-                            <span class="feat-name">真實地圖整合（Google Maps / OpenStreetMap）</span>
-                            <span class="feat-tag tag-todo">待開發</span>
+                        <div class="feature-row done">
+                            <span class="feat-status">✅</span>
+                            <span class="feat-name">真實地圖整合（Google Maps 逢甲至台北101模擬還原）</span>
+                            <span class="feat-tag tag-done">已完成</span>
                         </div>
                         <div class="feature-row todo">
                             <span class="feat-status">⬜</span>
@@ -396,7 +429,7 @@
             const ring = document.querySelector('.ring-fg');
             if (ring) {
                 const circumference = 2 * Math.PI * 70; // 439.82
-                const pct = 75;
+                const pct = 92;
                 const offset = circumference * (1 - pct / 100);
                 // Start from full offset, animate to target
                 ring.style.strokeDashoffset = circumference;

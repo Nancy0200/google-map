@@ -82,7 +82,12 @@ def post_message():
         return jsonify({"error": filter_err}), 400
     category = data.get("category", "other")
     speed_level = data.get("speed_level")
+    road_name = data.get("road_name")
+    road_city = data.get("road_city")
     msg = create_message(content, category, speed_level)
+    # Attach road info to broadcast payload
+    msg["road_name"] = road_name
+    msg["road_city"] = road_city
     socketio.emit("new_message", msg, broadcast=True)
     return jsonify(msg), 201
 
@@ -103,7 +108,12 @@ def handle_post_message(data):
         return
     category = data.get("category", "other")
     speed_level = data.get("speed_level")
+    road_name = data.get("road_name")
+    road_city = data.get("road_city")
     msg = create_message(content, category, speed_level)
+    # Attach road info to broadcast payload so all clients can display it
+    msg["road_name"] = road_name
+    msg["road_city"] = road_city
     emit("new_message", msg, broadcast=True)
 
 

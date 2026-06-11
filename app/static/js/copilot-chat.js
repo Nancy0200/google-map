@@ -242,7 +242,15 @@
         }
     }
 
-    /** Create a chat bubble DOM element. */
+    /** Get current road name from Navigation module. */
+    function getCurrentRoadTag() {
+        if (!window.Navigation) return null;
+        const seg = window.Navigation.getCurrentSegment();
+        if (!seg || !seg.road) return null;
+        return seg;
+    }
+
+    /** Create a chat bubble DOM element with road name tag. */
     function createBubble(msg, isSent) {
         const bubble = document.createElement('div');
         bubble.className = `chat-bubble ${isSent ? 'sent' : 'received'}`;
@@ -251,11 +259,24 @@
         const time = formatTime(msg.created_at);
         const senderName = isSent ? '副駕駛' : '路況回報';
 
+        // Road tag: use msg.road_name if present (from server), else use current nav road
+        const roadSeg = msg.road_name
+            ? { road: msg.road_name, city: msg.road_city || '' }
+            : (isSent ? getCurrentRoadTag() : null);
+
+        const isHighway = roadSeg && roadSeg.road && roadSeg.road.startsWith('國道');
+        const roadTagHtml = roadSeg
+            ? `<span class="bubble-road-tag${isHighway ? ' highway' : ''}">
+                 ${isHighway ? '🛣️' : '📍'} ${escapeHtml(roadSeg.road)}
+               </span>`
+            : '';
+
         bubble.innerHTML = `
             <div class="bubble-meta">
                 <span class="bubble-sender">${senderName}</span>
                 <span class="bubble-time">${time}</span>
             </div>
+            ${roadTagHtml}
             <div class="bubble-content">
                 <span class="bubble-category" data-cat="${msg.category || 'other'}">${catLabel}</span>
                 ${escapeHtml(msg.content)}
@@ -358,11 +379,16 @@
 
         sentMessageContents.add(content);
 
+        // Attach current road name to message payload
+        const roadSeg = getCurrentRoadTag();
+
         if (window.Socket) {
             window.Socket.sendMessage({
                 content: content,
                 category: 'other',
                 speed_level: null,
+                road_name: roadSeg ? roadSeg.road : null,
+                road_city: roadSeg ? roadSeg.city : null,
             });
         }
 
