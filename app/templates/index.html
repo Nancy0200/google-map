@@ -9,32 +9,52 @@
     <title>Road Bulletin — 即時路況留言板</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/quickbtn.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/danmaku.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/copilot-chat.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/navigation.css') }}">
 </head>
 <body>
     <div id="app">
-        <!-- ===== 全螢幕地圖 ===== -->
+
         <main id="nav-panel">
-            <!-- 動態導航 Canvas -->
-            <canvas id="map-canvas"></canvas>
 
-            <!-- 彈幕層 -->
-            <div id="danmaku-layer"></div>
+            <!-- ===== Google Maps 轉彎指示卡 (頂部) ===== -->
+            <div id="gmaps-turn-card">
+                <div id="gmaps-turn-icon-wrap">
+                    <svg id="gmaps-arrow-svg" viewBox="0 0 40 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M20 50L20 16M20 16L11 26M20 16L29 26"
+                              stroke="white" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+                <div id="gmaps-turn-details">
+                    <div id="gmaps-turn-dist">直行 0.8 km</div>
+                    <div id="gmaps-turn-name">文華路</div>
+                </div>
+            </div>
 
-            <!-- ===== 快速回報按鈕區 (左下角) ===== -->
+            <!-- 下一路段提示列 -->
+            <div id="gmaps-next-bar">
+                <span id="gmaps-next-icon">↱</span>
+                <span id="gmaps-next-text">然後 右轉 台灣大道</span>
+            </div>
+
+            <!-- ===== Canvas 地圖（透視視角） ===== -->
+            <div id="map-bg">
+                <canvas id="map-canvas"></canvas>
+
+                <!-- 彈幕層 -->
+                <div id="danmaku-layer"></div>
+            </div>
+
+            <!-- ===== 快速回報按鈕區 (左下角, 浮在地圖上) ===== -->
             <div id="quick-btn-area">
-
-                <!-- 主選單泡泡 (最左) -->
                 <div id="menu-wrap">
                     <button id="menu-toggle" title="快速回報選單">
                         <span class="menu-icon">◉</span>
                     </button>
-
-                    <!-- 選項面板 (向上展開) -->
                     <div id="menu-panel" class="collapsed">
                         <button class="menu-option" data-key="red">
                             <span class="option-icon">🔴</span>
@@ -58,8 +78,6 @@
                         </button>
                     </div>
                 </div>
-
-                <!-- 固定快速泡泡 (右側 3 個) -->
                 <div id="preset-slots">
                     <button class="preset-btn" data-key="accident" title="前方車禍">
                         <span class="preset-icon">🚗💥</span>
@@ -80,6 +98,48 @@
             <div id="cooldown-toast" class="hidden">
                 <span id="cooldown-msg">發送過於頻繁，請稍候 <span id="cooldown-sec">0</span> 秒</span>
             </div>
+
+            <!-- ===== Google Maps 底部狀態列 ===== -->
+            <div id="gmaps-status-bar">
+                <!-- 速限標誌 -->
+                <div id="gmaps-speed-limit">
+                    <div id="gmaps-speed-num">60</div>
+                </div>
+
+                <!-- 到達時間 -->
+                <div class="gmaps-status-cell">
+                    <div id="gmaps-arrive-time">—</div>
+                    <div class="gmaps-status-label">到達</div>
+                </div>
+
+                <!-- 剩餘時間（最大顯示） -->
+                <div class="gmaps-status-cell gmaps-main-cell">
+                    <div id="gmaps-eta-min">—</div>
+                    <div class="gmaps-status-label">分鐘</div>
+                </div>
+
+                <!-- 剩餘距離 -->
+                <div class="gmaps-status-cell">
+                    <div id="gmaps-eta-km">178</div>
+                    <div class="gmaps-status-label">km</div>
+                </div>
+
+                <!-- 結束導航按鈕 (連結至開發進度頁) -->
+                <a href="/progress" id="gmaps-exit-btn" title="結束導航 / 查看開發進度" style="text-decoration: none;">
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
+                        <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                    </svg>
+                </a>
+            </div>
+
+            <!-- 路段進度條（極細，在狀態列上方） -->
+            <div id="route-progress-bar">
+                <div id="route-progress-fill"></div>
+                <div id="route-start-dot"><span>🎓</span></div>
+                <div id="route-end-dot"><span>🏙️</span></div>
+                <div id="route-car-dot">🚗</div>
+            </div>
+
         </main>
 
         <!-- ===== 聊天室 Toggle ===== -->
@@ -88,7 +148,7 @@
             <span class="toggle-icon">💬</span>
         </button>
 
-        <!-- ===== 聊天室 (底部面板) ===== -->
+        <!-- ===== 聊天室面板 ===== -->
         <section id="copilot-panel">
             <header id="copilot-header">
                 <div class="chat-avatar">💬</div>
@@ -97,8 +157,8 @@
                     <div class="chat-status">即時連線中</div>
                 </div>
                 <span id="copilot-online-count">1 在線</span>
-                <button class="copilot-minimize-btn" id="copilot-minimize" title="縮小聊天室">▾</button>
-                <button class="copilot-close-btn" id="copilot-close" title="關閉聊天室">✕</button>
+                <button class="copilot-minimize-btn" id="copilot-minimize" title="縮小">▾</button>
+                <button class="copilot-close-btn"   id="copilot-close"    title="關閉">✕</button>
             </header>
             <div id="copilot-messages">
                 <div id="copilot-empty">
@@ -122,23 +182,22 @@
                     <input type="text" id="copilot-input" placeholder="輸入訊息..." maxlength="100" autocomplete="off">
                     <span id="copilot-char-count">0/100</span>
                 </div>
-                <button id="copilot-send" disabled title="送出訊息">
+                <button id="copilot-send" disabled title="送出">
                     <span class="send-icon">➤</span>
                 </button>
             </footer>
         </section>
 
-        <!-- ===== 收起後的展開按鈕 (右側邊緣) ===== -->
+        <!-- 收起後展開按鈕 -->
         <button id="chat-expand-tab" class="hidden" title="展開聊天室">
             <span class="expand-icon">💬</span>
             <span class="expand-badge" id="expand-badge">0</span>
         </button>
     </div>
 
-    <!-- SocketIO client library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
-    <!-- App modules -->
-    <script src="{{ url_for('static', filename='js/navmap.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/navigation.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/map-canvas.js') }}"></script>
     <script src="{{ url_for('static', filename='js/speed.js') }}"></script>
     <script src="{{ url_for('static', filename='js/cooldown.js') }}"></script>
     <script src="{{ url_for('static', filename='js/filter.js') }}"></script>

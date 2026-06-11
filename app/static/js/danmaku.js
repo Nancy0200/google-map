@@ -51,11 +51,11 @@
         el.addEventListener('animationend', () => el.remove());
     }
 
-    // Listen for messages
+    // Listen for messages — 2 秒後才發射彈幕（給使用者看到訊息的時間）
     if (window.Socket) {
         window.Socket.onNewMessage((msg, isHistory) => {
             if (isHistory) return; // don't replay old danmaku
-            fire(msg);
+            setTimeout(() => fire(msg), 2000);
         });
     }
 
