@@ -356,11 +356,18 @@
 
         if (window.Cooldown) window.Cooldown.record();
 
-        sentMessageContents.add(content);
+        // Append current location from navigation simulation
+        let fullContent = content;
+        if (window.NavSim) {
+            const loc = window.NavSim.getCurrentLocation();
+            fullContent = `${content} 📍 ${loc}`;
+        }
+
+        sentMessageContents.add(fullContent);
 
         if (window.Socket) {
             window.Socket.sendMessage({
-                content: content,
+                content: fullContent,
                 category: 'other',
                 speed_level: null,
             });

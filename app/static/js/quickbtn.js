@@ -1,6 +1,8 @@
 /**
- * quickbtn.js — Main menu toggle, option click, long-press to pin,
- *               and pinned slots orchestration.
+ * quickbtn.js — Main menu toggle, option click, and fixed shortcut buttons.
+ *
+ * Shortcut buttons are fixed to: red (車速<30), accident (前方車禍), debris (前方掉落物).
+ * All messages automatically include current simulated location.
  */
 
 (function () {
@@ -8,10 +10,46 @@
     const menuToggle = document.getElementById('menu-toggle');
     const menuPanel = document.getElementById('menu-panel');
     const menuOptions = document.querySelectorAll('.menu-option');
+    const shortcutBtns = document.querySelectorAll('.shortcut-btn');
 
     let menuOpen = false;
-    let longPressTimer = null;
-    const LONG_PRESS_MS = 800;
+
+    // ===================== Location Helper =====================
+
+    /** Get current location string from NavSim, or default */
+    function getLocationTag() {
+        if (window.NavSim) {
+            return window.NavSim.getCurrentLocation();
+        }
+        return '未知位置';
+    }
+
+    /** Append location to message content */
+    function appendLocation(content) {
+        const loc = getLocationTag();
+        return `${content} 📍 ${loc}`;
+    }
+
+    // ===================== Send Helper =====================
+
+    function sendReport(key) {
+        const opt = window.REPORT_OPTIONS[key];
+        if (!opt) return;
+
+        if (window.Cooldown && !window.Cooldown.canSend()) {
+            window.Cooldown.showToast();
+            return;
+        }
+
+        if (window.Cooldown) window.Cooldown.record();
+        if (window.Socket) {
+            window.Socket.sendMessage({
+                content: appendLocation(opt.content),
+                category: opt.category,
+                speed_level: opt.speed_level,
+            });
+        }
+    }
 
     // ===================== Menu Toggle =====================
     function toggleMenu() {
@@ -46,24 +84,8 @@
     menuOptions.forEach((btn) => {
         const key = btn.dataset.key;
 
-        // --- Normal click: send message ---
         btn.addEventListener('click', () => {
-            const opt = window.REPORT_OPTIONS[key];
-            if (!opt) return;
-
-            if (window.Cooldown && !window.Cooldown.canSend()) {
-                window.Cooldown.showToast();
-                return;
-            }
-
-            if (window.Cooldown) window.Cooldown.record();
-            if (window.Socket) {
-                window.Socket.sendMessage({
-                    content: opt.content,
-                    category: opt.category,
-                    speed_level: opt.speed_level,
-                });
-            }
+            sendReport(key);
 
             // Brief visual feedback
             btn.style.transform = 'scale(0.93)';
@@ -73,36 +95,20 @@
 
             closeMenu();
         });
-
-        // --- Long press: pin flow ---
-        btn.addEventListener('pointerdown', (e) => {
-            btn.classList.remove('long-pressing');
-            longPressTimer = setTimeout(() => {
-                btn.classList.remove('long-pressing');
-                if (window.Pinned) window.Pinned.startPinFlow(key);
-                closeMenu();
-            }, LONG_PRESS_MS);
-            // Add visual feedback after a tiny delay so it doesn't flash on normal clicks
-            setTimeout(() => {
-                if (longPressTimer) btn.classList.add('long-pressing');
-            }, 150);
-        });
-
-        btn.addEventListener('pointerup', () => {
-            clearTimeout(longPressTimer);
-            longPressTimer = null;
-            btn.classList.remove('long-pressing');
-        });
-
-        btn.addEventListener('pointerleave', () => {
-            clearTimeout(longPressTimer);
-            longPressTimer = null;
-            btn.classList.remove('long-pressing');
-        });
     });
 
-    // ===================== Init Pinned =====================
-    if (window.Pinned) {
-        window.Pinned.init();
-    }
+    // ===================== Shortcut Button Click =====================
+    shortcutBtns.forEach((btn) => {
+        const key = btn.dataset.key;
+
+        btn.addEventListener('click', () => {
+            sendReport(key);
+
+            // Visual feedback
+            btn.style.transform = 'scale(0.85)';
+            setTimeout(() => {
+                btn.style.transform = '';
+            }, 150);
+        });
+    });
 })();

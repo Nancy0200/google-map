@@ -14,44 +14,71 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/quickbtn.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/danmaku.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/copilot-chat.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/navsim.css') }}">
 </head>
 <body>
     <div id="app">
         <!-- ===== 全螢幕地圖 ===== -->
         <main id="nav-panel">
-            <!-- 模擬地圖背景（CSS 繪製） -->
-            <div id="map-bg">
-                <div class="map-grid"></div>
-                <div class="map-road map-road-h"></div>
-                <div class="map-road map-road-v"></div>
-                <div class="map-label" style="top:18%;left:12%">🏫 中正大學</div>
-                <div class="map-label" style="top:45%;left:55%">🏪 7-11</div>
-                <div class="map-label" style="top:72%;left:30%">⛽ 加油站</div>
-                <div class="map-label" style="top:25%;left:75%">🏥 醫院</div>
+            <!-- Navigation simulation canvas -->
+            <div id="navsim-canvas-wrap">
+                <canvas id="navsim-canvas"></canvas>
             </div>
 
             <!-- 彈幕層 -->
             <div id="danmaku-layer"></div>
 
+            <!-- ===== 右上角模擬按鈕 ===== -->
+            <button id="sim-start-btn" title="開始導航模擬">
+                <span class="sim-btn-icon">▶</span>
+                <span class="sim-btn-label">開始模擬</span>
+            </button>
+
+            <!-- ===== Navigation HUD (top bar) ===== -->
+            <div id="nav-hud">
+                <div class="hud-road-card">
+                    <span class="hud-road-icon">🛣️</span>
+                    <span class="hud-road-name" id="hud-road">逢甲路</span>
+                    <span class="hud-km-badge" id="hud-km">0km</span>
+                </div>
+                <div class="hud-stats">
+                    <div class="hud-stat stat-speed">
+                        <span class="hud-stat-val"><span id="hud-speed">0</span></span>
+                        <span class="hud-stat-label">km/h</span>
+                    </div>
+                    <div class="hud-stat">
+                        <span class="hud-stat-val" id="hud-dist">196.0 km</span>
+                        <span class="hud-stat-label">剩餘</span>
+                    </div>
+                    <div class="hud-stat">
+                        <span class="hud-stat-val" id="hud-eta">1時58分</span>
+                        <span class="hud-stat-label">到達</span>
+                    </div>
+                </div>
+            </div>
+
             <!-- ===== 快速回報按鈕區 (左下角) ===== -->
             <div id="quick-btn-area">
-                <!-- 釘選格 (左側 3 格) -->
-                <div id="pinned-slots">
-                    <button class="pinned-btn" data-slot="2" title="釘選格 3">
-                        <span class="pinned-icon">📌</span>
-                    </button>
-                    <button class="pinned-btn" data-slot="1" title="釘選格 2">
-                        <span class="pinned-icon">📌</span>
-                    </button>
-                    <button class="pinned-btn" data-slot="0" title="釘選格 1">
-                        <span class="pinned-icon">📌</span>
-                    </button>
-                </div>
-
-                <!-- 主選單按鈕 -->
+                <!-- 主選單按鈕 (最左) -->
                 <button id="menu-toggle" title="快速回報">
                     <span class="menu-icon">◉</span>
                 </button>
+
+                <!-- 3 個固定快捷鍵 (右側) -->
+                <div id="shortcut-slots">
+                    <button class="shortcut-btn" data-key="red" title="車速 < 30">
+                        <span class="shortcut-icon">🔴</span>
+                        <span class="shortcut-label">慢速</span>
+                    </button>
+                    <button class="shortcut-btn" data-key="accident" title="前方車禍">
+                        <span class="shortcut-icon">🚗💥</span>
+                        <span class="shortcut-label">車禍</span>
+                    </button>
+                    <button class="shortcut-btn" data-key="debris" title="前方掉落物">
+                        <span class="shortcut-icon">📦⚠️</span>
+                        <span class="shortcut-label">掉落物</span>
+                    </button>
+                </div>
 
                 <!-- 選項面板 (向上展開) -->
                 <div id="menu-panel" class="collapsed">
@@ -75,19 +102,6 @@
                         <span class="option-icon">📦⚠️</span>
                         <span class="option-label">前方掉落物</span>
                     </button>
-                </div>
-            </div>
-
-            <!-- 釘選提示覆蓋層 -->
-            <div id="pin-overlay" class="hidden">
-                <div id="pin-prompt">
-                    <p>選擇要釘選的格位：</p>
-                    <div id="pin-prompt-slots">
-                        <button class="pin-slot-choice" data-slot="0">格 1</button>
-                        <button class="pin-slot-choice" data-slot="1">格 2</button>
-                        <button class="pin-slot-choice" data-slot="2">格 3</button>
-                    </div>
-                    <button id="pin-cancel">取消</button>
                 </div>
             </div>
 
@@ -157,8 +171,8 @@
     <script src="{{ url_for('static', filename='js/cooldown.js') }}"></script>
     <script src="{{ url_for('static', filename='js/filter.js') }}"></script>
     <script src="{{ url_for('static', filename='js/socket.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/navsim.js') }}"></script>
     <script src="{{ url_for('static', filename='js/danmaku.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/pinned.js') }}"></script>
     <script src="{{ url_for('static', filename='js/quickbtn.js') }}"></script>
     <script src="{{ url_for('static', filename='js/copilot-chat.js') }}"></script>
 </body>

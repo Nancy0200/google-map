@@ -13,7 +13,7 @@
     z-index: 50;
 }
 
-/* --- Main Menu Toggle Button --- */
+/* --- Main Menu Toggle Button (leftmost) --- */
 #menu-toggle {
     width: 64px;
     height: 64px;
@@ -33,6 +33,8 @@
         0 0 20px rgba(108, 99, 255, 0.2),
         0 4px 12px rgba(0, 0, 0, 0.4),
         inset 0 1px 1px rgba(255, 255, 255, 0.06);
+    flex-shrink: 0;
+    order: -1; /* Ensure it's always first */
 }
 
 #menu-toggle:hover {
@@ -150,27 +152,6 @@
     transform: scale(0.97);
 }
 
-/* Long-press visual feedback */
-.menu-option.long-pressing {
-    border-color: var(--warning);
-    box-shadow: 0 0 20px rgba(255, 171, 64, 0.3);
-}
-
-.menu-option.long-pressing::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    height: 3px;
-    background: var(--warning);
-    animation: long-press-fill 0.8s linear forwards;
-}
-
-@keyframes long-press-fill {
-    from { width: 0; }
-    to   { width: 100%; }
-}
-
 .option-icon {
     font-size: 20px;
     flex-shrink: 0;
@@ -204,157 +185,97 @@
     to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-/* --- Pinned Slots --- */
-#pinned-slots {
+/* --- Fixed Shortcut Buttons (right of menu toggle) --- */
+#shortcut-slots {
     display: flex;
     gap: 10px;
     align-items: flex-end;
 }
 
-.pinned-btn {
-    width: 52px;
-    height: 52px;
-    border-radius: var(--radius-round);
-    border: 1px dashed var(--border);
-    background: rgba(22, 24, 34, 0.7);
-    backdrop-filter: blur(10px);
-    color: var(--text-muted);
-    font-size: 22px;
-    cursor: pointer;
+.shortcut-btn {
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    transition: all 0.25s ease;
-    position: relative;
-}
-
-.pinned-btn:hover {
-    border-color: var(--accent);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-}
-
-.pinned-btn:active {
-    transform: scale(0.93);
-}
-
-.pinned-btn.has-pin {
-    border-style: solid;
-    border-color: rgba(108, 99, 255, 0.4);
-    background: rgba(30, 25, 60, 0.85);
+    gap: 2px;
+    width: 58px;
+    height: 58px;
+    border-radius: 16px;
+    border: 1px solid rgba(108, 99, 255, 0.35);
+    background: rgba(22, 24, 34, 0.85);
+    backdrop-filter: blur(12px);
     color: var(--text-primary);
-    box-shadow: 0 0 12px rgba(108, 99, 255, 0.1);
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+    box-shadow:
+        0 2px 10px rgba(0, 0, 0, 0.3),
+        0 0 0 1px rgba(108, 99, 255, 0.05);
 }
 
-.pinned-btn.has-pin:hover {
+.shortcut-btn:hover {
     border-color: var(--accent);
-    box-shadow: 0 0 20px rgba(108, 99, 255, 0.25);
+    transform: translateY(-3px);
+    box-shadow:
+        0 6px 20px rgba(0, 0, 0, 0.4),
+        0 0 20px rgba(108, 99, 255, 0.2);
 }
 
-/* Flashing state when choosing a slot to pin */
-.pinned-btn.choosing {
-    animation: slot-flash 0.6s ease-in-out infinite alternate;
-    border-color: var(--warning);
+.shortcut-btn:active {
+    transform: scale(0.9);
 }
 
-@keyframes slot-flash {
-    from { box-shadow: 0 0 8px rgba(255, 171, 64, 0.3); border-color: var(--warning); }
-    to   { box-shadow: 0 0 20px rgba(255, 171, 64, 0.6); border-color: #ffc570; }
-}
-
-.pinned-icon {
+.shortcut-icon {
+    font-size: 20px;
     line-height: 1;
 }
 
-/* Cooldown overlay on pinned buttons */
-.pinned-btn .cooldown-overlay,
-.menu-option .cooldown-overlay {
-    position: absolute;
-    inset: 0;
-    background: rgba(15, 17, 23, 0.75);
-    border-radius: inherit;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 12px;
-    font-weight: 700;
+.shortcut-label {
+    font-size: 9px;
+    font-weight: 600;
     color: var(--text-muted);
-    pointer-events: none;
+    white-space: nowrap;
+    letter-spacing: 0.3px;
 }
 
-/* --- Pin Overlay (slot selection prompt) --- */
-#pin-overlay {
-    position: absolute;
-    inset: 0;
-    background: rgba(15, 17, 23, 0.7);
-    backdrop-filter: blur(6px);
-    z-index: 100;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    animation: fadeIn 0.2s ease;
+/* Per-shortcut accent colors */
+.shortcut-btn[data-key="red"] {
+    border-color: rgba(255, 82, 82, 0.35);
 }
-
-#pin-overlay.hidden {
-    display: none;
-}
-
-#pin-prompt {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 24px 28px;
-    text-align: center;
-    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
-}
-
-#pin-prompt p {
-    font-size: 15px;
-    font-weight: 600;
-    margin-bottom: 16px;
-    color: var(--text-primary);
-}
-
-#pin-prompt-slots {
-    display: flex;
-    gap: 12px;
-    justify-content: center;
-    margin-bottom: 14px;
-}
-
-.pin-slot-choice {
-    width: 60px;
-    height: 60px;
-    border-radius: var(--radius);
-    border: 2px solid var(--border);
-    background: var(--bg-input);
-    color: var(--text-primary);
-    font-size: 14px;
-    font-weight: 600;
-    font-family: var(--font-main);
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-.pin-slot-choice:hover {
-    border-color: var(--accent);
-    background: rgba(108, 99, 255, 0.15);
-    transform: translateY(-2px);
-}
-
-#pin-cancel {
-    padding: 6px 20px;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    background: transparent;
-    color: var(--text-secondary);
-    font-size: 13px;
-    font-family: var(--font-main);
-    cursor: pointer;
-    transition: all 0.2s;
-}
-#pin-cancel:hover {
+.shortcut-btn[data-key="red"]:hover {
     border-color: var(--danger);
-    color: var(--danger);
+    box-shadow:
+        0 6px 20px rgba(0, 0, 0, 0.4),
+        0 0 16px rgba(255, 82, 82, 0.2);
+}
+.shortcut-btn[data-key="red"] .shortcut-label {
+    color: #ff7b7b;
+}
+
+.shortcut-btn[data-key="accident"] {
+    border-color: rgba(255, 171, 64, 0.35);
+}
+.shortcut-btn[data-key="accident"]:hover {
+    border-color: var(--warning);
+    box-shadow:
+        0 6px 20px rgba(0, 0, 0, 0.4),
+        0 0 16px rgba(255, 171, 64, 0.2);
+}
+.shortcut-btn[data-key="accident"] .shortcut-label {
+    color: #ffc570;
+}
+
+.shortcut-btn[data-key="debris"] {
+    border-color: rgba(0, 210, 255, 0.35);
+}
+.shortcut-btn[data-key="debris"]:hover {
+    border-color: var(--accent-2);
+    box-shadow:
+        0 6px 20px rgba(0, 0, 0, 0.4),
+        0 0 16px rgba(0, 210, 255, 0.2);
+}
+.shortcut-btn[data-key="debris"] .shortcut-label {
+    color: #66e0ff;
 }
 
 /* --- Cooldown Toast --- */
@@ -383,7 +304,7 @@
 
 /* Disabled state for buttons during cooldown */
 .menu-option.disabled,
-.pinned-btn.disabled {
+.shortcut-btn.disabled {
     opacity: 0.4;
     pointer-events: none;
     filter: grayscale(0.6);
