@@ -34,8 +34,8 @@
                 <span class="sim-btn-label">開始模擬</span>
             </button>
 
-            <!-- ===== Navigation HUD (top bar) ===== -->
-            <div id="nav-hud">
+            <!-- ===== Legacy Navigation HUD (hidden, for compatibility) ===== -->
+            <div id="nav-hud" style="display:none;">
                 <div class="hud-road-card">
                     <span class="hud-road-icon">🛣️</span>
                     <span class="hud-road-name" id="hud-road">逢甲路</span>
@@ -53,6 +53,46 @@
                     <div class="hud-stat">
                         <span class="hud-stat-val" id="hud-eta">1時58分</span>
                         <span class="hud-stat-label">到達</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== Google Maps Style Navigation HUD ===== -->
+            <!-- Top: Turn instruction card (green) -->
+            <div id="nav-turn-card" class="hidden">
+                <div class="turn-card-inner">
+                    <div class="turn-icon-wrap">
+                        <span id="turn-icon" class="turn-arrow">⬆</span>
+                    </div>
+                    <div class="turn-info">
+                        <div class="turn-dist" id="turn-dist">逢甲路</div>
+                        <div class="turn-road" id="turn-road">持續直行</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom-left: Speed circle -->
+            <div id="speed-circle">
+                <span id="speed-value" class="speed-num">0</span>
+                <span class="speed-unit">km/h</span>
+            </div>
+
+            <!-- Bottom: Info bar (white) -->
+            <div id="nav-hud-gmap">
+                <div class="gmap-bottom-bar">
+                    <div class="gmap-info-item gmap-time">
+                        <span class="gmap-info-value" id="bottom-time">1 時 58 分</span>
+                        <span class="gmap-info-label">剩餘時間</span>
+                    </div>
+                    <div class="gmap-divider"></div>
+                    <div class="gmap-info-item gmap-dist">
+                        <span class="gmap-info-value" id="bottom-dist">196.0 公里</span>
+                        <span class="gmap-info-label">剩餘距離</span>
+                    </div>
+                    <div class="gmap-divider"></div>
+                    <div class="gmap-info-item gmap-eta">
+                        <span class="gmap-info-value" id="bottom-eta">--:--</span>
+                        <span class="gmap-info-label">預計到達</span>
                     </div>
                 </div>
             </div>

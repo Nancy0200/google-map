@@ -1,8 +1,8 @@
 /**
- * navsim.js — Navigation Simulation Engine (Google Maps-style follow view)
+ * navsim.js — Navigation Simulation Engine (Google Maps-style driving view)
  *
  * Simulates driving from 逢甲大學 to 台北101 at 100 km/hr.
- * Renders a perspective follow-cam view like Google Maps navigation.
+ * Renders a perspective follow-cam view matching Google Maps navigation UI.
  *
  * Exports via window.NavSim
  */
@@ -59,7 +59,7 @@
     // ===================== Perspective Constants =====================
     const VIEW_DIST = 2.5;       // km ahead to render
     const FOCAL = 0.55;          // perspective focal length (km)
-    const ROAD_HW_KM = 0.016;   // road half-width in km (16m = 32m total)
+    const ROAD_HW_KM = 0.018;   // road half-width in km (18m = 36m total)
     const SAMPLE_STEP = 0.012;   // km between samples (12m)
     const BEHIND_DIST = 0.15;    // km behind car to render
 
@@ -75,12 +75,26 @@
     // ===================== DOM =====================
     const canvas = document.getElementById('navsim-canvas');
     const ctx = canvas ? canvas.getContext('2d') : null;
+    const simBtn = document.getElementById('sim-start-btn');
+
+    // HUD elements (Google Maps style - managed via HTML overlays)
+    const hudTurnCard = document.getElementById('nav-turn-card');
+    const hudTurnIcon = document.getElementById('turn-icon');
+    const hudTurnDist = document.getElementById('turn-dist');
+    const hudTurnRoad = document.getElementById('turn-road');
+    const hudSpeedVal = document.getElementById('speed-value');
+    const hudBottomTime = document.getElementById('bottom-time');
+    const hudBottomDist = document.getElementById('bottom-dist');
+    const hudBottomEta = document.getElementById('bottom-eta');
+    const hudOverlay = document.getElementById('nav-hud-gmap');
+    const hudSpeedCircle = document.getElementById('speed-circle');
+
+    // Legacy HUD elements (keep for compatibility)
     const hudRoad = document.getElementById('hud-road');
     const hudKm = document.getElementById('hud-km');
     const hudSpeed = document.getElementById('hud-speed');
     const hudEta = document.getElementById('hud-eta');
     const hudDist = document.getElementById('hud-dist');
-    const simBtn = document.getElementById('sim-start-btn');
     const hudPanel = document.getElementById('nav-hud');
 
     // ===================== Utility =====================
@@ -133,6 +147,45 @@
         };
     }
 
+    /** Detect upcoming turn direction based on heading change */
+    function getNextTurn(dist) {
+        const currentRoad = getPositionAtDist(dist).road;
+        let nextRoadName = null;
+        let nextRoadDist = 0;
+        let turnAngle = 0;
+
+        for (let d = 0.1; d < 10; d += 0.1) {
+            const pos = getPositionAtDist(Math.min(dist + d, TOTAL_DISTANCE));
+            if (pos.road !== currentRoad) {
+                nextRoadName = pos.road;
+                nextRoadDist = d;
+                // Calculate heading change
+                const h1 = getHeading(dist + d - 0.2);
+                const h2 = getHeading(dist + d + 0.2);
+                turnAngle = h2 - h1;
+                // Normalize to -PI..PI
+                while (turnAngle > Math.PI) turnAngle -= 2 * Math.PI;
+                while (turnAngle < -Math.PI) turnAngle += 2 * Math.PI;
+                break;
+            }
+        }
+        return { roadName: nextRoadName, distance: nextRoadDist, angle: turnAngle };
+    }
+
+    /** Get turn arrow character based on angle */
+    function getTurnArrow(angle) {
+        if (angle === 0) return { icon: '⬆', text: '直行' };
+        const absDeg = Math.abs(angle) * 180 / Math.PI;
+        if (absDeg < 20) return { icon: '⬆', text: '直行' };
+        if (angle > 0) {
+            if (absDeg < 50) return { icon: '↗', text: '靠右行駛' };
+            return { icon: '➡', text: '右轉' };
+        } else {
+            if (absDeg < 50) return { icon: '↖', text: '靠左行駛' };
+            return { icon: '⬅', text: '左轉' };
+        }
+    }
+
     // ===================== Canvas =====================
 
     let cw = 400, ch = 700;
@@ -150,16 +203,16 @@
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     }
 
-    // ===================== Follow-Cam Rendering =====================
+    // ===================== Google Maps Follow-Cam Rendering =====================
 
     function drawFollowView() {
         const w = cw, h = ch;
-        const horizonY = h * 0.30;
-        const carY = h * 0.78;
+        const horizonY = h * 0.28;
+        const carY = h * 0.72;
         const centerX = w / 2;
 
-        // H_SCALE: road takes ~58% of width at car
-        const H_SCALE = (w * 0.58) / (ROAD_HW_KM * 2);
+        // H_SCALE: road takes ~60% of width at car
+        const H_SCALE = (w * 0.60) / (ROAD_HW_KM * 2);
 
         const carPos = getPositionAtDist(distanceTravelled);
         const heading = getHeading(distanceTravelled);
@@ -178,42 +231,39 @@
             return { x: sx, y: sy, scale };
         }
 
-        // --- 1. Sky ---
-        const skyG = ctx.createLinearGradient(0, 0, 0, horizonY + 10);
-        skyG.addColorStop(0, '#060a16');
-        skyG.addColorStop(0.6, '#0c1224');
-        skyG.addColorStop(1, '#151e35');
+        // === 1. SKY — Light blue gradient (Google Maps daytime) ===
+        const skyG = ctx.createLinearGradient(0, 0, 0, horizonY + 20);
+        skyG.addColorStop(0, '#87CEEB');    // Sky blue
+        skyG.addColorStop(0.4, '#a8d8f0');  // Lighter blue
+        skyG.addColorStop(0.8, '#c8e6f5');  // Very light blue
+        skyG.addColorStop(1, '#d4e8d0');    // Hint of green at horizon
         ctx.fillStyle = skyG;
-        ctx.fillRect(0, 0, w, horizonY + 10);
+        ctx.fillRect(0, 0, w, horizonY + 20);
 
-        // Stars
-        for (let i = 0; i < 60; i++) {
-            const sx = (i * 137.5 + 42.7) % w;
-            const sy = (i * 89.3 + 17.1) % (horizonY - 15);
-            const br = 0.15 + (i % 5) * 0.08;
-            const sz = 0.4 + (i % 3) * 0.3;
-            ctx.fillStyle = `rgba(255,255,255,${br})`;
-            ctx.beginPath();
-            ctx.arc(sx, sy, sz, 0, Math.PI * 2);
-            ctx.fill();
-        }
+        // Subtle clouds
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+        const cloudY = horizonY * 0.3;
+        drawCloud(w * 0.15, cloudY, 40, 18);
+        drawCloud(w * 0.55, cloudY * 0.7, 55, 22);
+        drawCloud(w * 0.8, cloudY * 1.2, 35, 15);
 
-        // --- 2. Terrain ---
+        // === 2. TERRAIN — Light green (Google Maps style) ===
         const terG = ctx.createLinearGradient(0, horizonY, 0, h);
-        terG.addColorStop(0, '#141f14');
-        terG.addColorStop(0.3, '#0f1a0e');
-        terG.addColorStop(1, '#0a120a');
+        terG.addColorStop(0, '#a8c99e');   // Lighter green at horizon
+        terG.addColorStop(0.1, '#8fba82'); // Medium green
+        terG.addColorStop(0.4, '#7aad6d'); // Deeper green
+        terG.addColorStop(1, '#6a9d5d');   // Saturated green near camera
         ctx.fillStyle = terG;
         ctx.fillRect(0, horizonY, w, h - horizonY);
 
-        // Horizon glow
-        const hGlow = ctx.createLinearGradient(0, horizonY - 5, 0, horizonY + 30);
-        hGlow.addColorStop(0, 'rgba(30,50,80,0.3)');
-        hGlow.addColorStop(1, 'rgba(30,50,80,0)');
-        ctx.fillStyle = hGlow;
-        ctx.fillRect(0, horizonY - 5, w, 35);
+        // Horizon haze — soft blend between sky and ground
+        const hHaze = ctx.createLinearGradient(0, horizonY - 10, 0, horizonY + 25);
+        hHaze.addColorStop(0, 'rgba(200, 220, 200, 0.4)');
+        hHaze.addColorStop(1, 'rgba(200, 220, 200, 0)');
+        ctx.fillStyle = hHaze;
+        ctx.fillRect(0, horizonY - 10, w, 35);
 
-        // --- 3. Build projected road points ---
+        // === 3. Build projected road points ===
         const pts = [];
         for (let d = -BEHIND_DIST; d <= VIEW_DIST; d += SAMPLE_STEP) {
             const actDist = Math.max(0, Math.min(distanceTravelled + d, TOTAL_DISTANCE));
@@ -223,11 +273,27 @@
             pts.push({ ...p, d, road: pos.road, km: pos.km, dist: actDist });
         }
 
-        // --- 4. Draw road surface ---
+        // === 4. Road shoulders (darker edge strip) ===
+        const shoulderW = 0.005; // 5m in km
+        ctx.fillStyle = '#7a7a7a';
+        ctx.beginPath();
+        for (let i = 0; i < pts.length; i++) {
+            const hw = (ROAD_HW_KM + shoulderW) * pts[i].scale * H_SCALE;
+            if (i === 0) ctx.moveTo(pts[i].x - hw, pts[i].y);
+            else ctx.lineTo(pts[i].x - hw, pts[i].y);
+        }
+        for (let i = pts.length - 1; i >= 0; i--) {
+            const hw = (ROAD_HW_KM + shoulderW) * pts[i].scale * H_SCALE;
+            ctx.lineTo(pts[i].x + hw, pts[i].y);
+        }
+        ctx.closePath();
+        ctx.fill();
+
+        // === 5. Road surface — Grey asphalt ===
         const roadColor = ctx.createLinearGradient(0, horizonY, 0, h);
-        roadColor.addColorStop(0, '#1c2030');
-        roadColor.addColorStop(0.5, '#252a3a');
-        roadColor.addColorStop(1, '#2e3345');
+        roadColor.addColorStop(0, '#b0b0b0');   // Lighter grey far away
+        roadColor.addColorStop(0.3, '#9a9a9a');  // Medium grey
+        roadColor.addColorStop(1, '#888888');     // Slightly darker near camera
         ctx.fillStyle = roadColor;
         ctx.beginPath();
         for (let i = 0; i < pts.length; i++) {
@@ -243,39 +309,38 @@
         ctx.closePath();
         ctx.fill();
 
-        // --- 5. Road shoulders ---
-        const shoulderW = 0.003; // 3m in km
-        // Left shoulder
-        ctx.fillStyle = '#1a1e28';
+        // === 6. Lane markings — White lines ===
+        // Edge lines (solid white)
+        drawLaneLine(pts, ROAD_HW_KM, 'solid', 'rgba(255,255,255,0.85)', 2, H_SCALE);
+        drawLaneLine(pts, -ROAD_HW_KM, 'solid', 'rgba(255,255,255,0.85)', 2, H_SCALE);
+
+        // Lane dividers (dashed white)
+        const laneOff = ROAD_HW_KM / 2;
+        drawLaneLine(pts, laneOff, 'dashed', 'rgba(255,255,255,0.7)', 1.5, H_SCALE);
+        drawLaneLine(pts, -laneOff, 'dashed', 'rgba(255,255,255,0.7)', 1.5, H_SCALE);
+
+        // Center line (solid yellow for opposite direction)
+        drawLaneLine(pts, 0, 'solid', 'rgba(255, 200, 0, 0.6)', 2, H_SCALE);
+
+        // === 7. THICK BLUE ROUTE LINE — Google Maps signature ===
+        const routeHW = 0.006; // 6m half-width = 12m total (thick blue band)
+        // Draw blue route shadow first
+        ctx.fillStyle = 'rgba(30, 80, 180, 0.25)';
         ctx.beginPath();
         for (let i = 0; i < pts.length; i++) {
-            const hw = (ROAD_HW_KM + shoulderW) * pts[i].scale * H_SCALE;
+            const hw = (routeHW + 0.002) * pts[i].scale * H_SCALE;
             if (i === 0) ctx.moveTo(pts[i].x - hw, pts[i].y);
             else ctx.lineTo(pts[i].x - hw, pts[i].y);
         }
         for (let i = pts.length - 1; i >= 0; i--) {
-            const hw = ROAD_HW_KM * pts[i].scale * H_SCALE;
-            ctx.lineTo(pts[i].x - hw, pts[i].y);
-        }
-        ctx.closePath();
-        ctx.fill();
-        // Right shoulder
-        ctx.beginPath();
-        for (let i = 0; i < pts.length; i++) {
-            const hw = ROAD_HW_KM * pts[i].scale * H_SCALE;
-            if (i === 0) ctx.moveTo(pts[i].x + hw, pts[i].y);
-            else ctx.lineTo(pts[i].x + hw, pts[i].y);
-        }
-        for (let i = pts.length - 1; i >= 0; i--) {
-            const hw = (ROAD_HW_KM + shoulderW) * pts[i].scale * H_SCALE;
+            const hw = (routeHW + 0.002) * pts[i].scale * H_SCALE;
             ctx.lineTo(pts[i].x + hw, pts[i].y);
         }
         ctx.closePath();
         ctx.fill();
 
-        // --- 6. Route highlight (blue strip) ---
-        const routeHW = 0.004; // 4m half-width
-        ctx.fillStyle = 'rgba(66, 133, 244, 0.25)';
+        // Main blue route
+        ctx.fillStyle = '#4285F4';
         ctx.beginPath();
         for (let i = 0; i < pts.length; i++) {
             const hw = routeHW * pts[i].scale * H_SCALE;
@@ -289,8 +354,8 @@
         ctx.closePath();
         ctx.fill();
 
-        // Brighter center route line
-        ctx.strokeStyle = 'rgba(66, 133, 244, 0.6)';
+        // Lighter center highlight on route
+        ctx.strokeStyle = 'rgba(130, 180, 255, 0.5)';
         ctx.lineWidth = 2;
         ctx.beginPath();
         for (let i = 0; i < pts.length; i++) {
@@ -299,57 +364,35 @@
         }
         ctx.stroke();
 
-        // --- 7. Lane markings ---
-        // Edge lines (solid white)
-        drawLaneLine(pts, ROAD_HW_KM, 'solid', 'rgba(255,255,255,0.45)', 1.5, H_SCALE);
-        drawLaneLine(pts, -ROAD_HW_KM, 'solid', 'rgba(255,255,255,0.45)', 1.5, H_SCALE);
-
-        // Center median (solid yellow)
-        drawLaneLine(pts, 0, 'solid', 'rgba(255,200,0,0.5)', 2, H_SCALE);
-
-        // Lane dividers (dashed white)
-        const laneOff = ROAD_HW_KM / 2;
-        drawLaneLine(pts, laneOff, 'dashed', 'rgba(255,255,255,0.25)', 1, H_SCALE);
-        drawLaneLine(pts, -laneOff, 'dashed', 'rgba(255,255,255,0.25)', 1, H_SCALE);
-
-        // --- 8. Guardrails (thin lines outside road) ---
-        drawLaneLine(pts, ROAD_HW_KM + shoulderW, 'solid', 'rgba(150,160,180,0.3)', 1, H_SCALE);
-        drawLaneLine(pts, -(ROAD_HW_KM + shoulderW), 'solid', 'rgba(150,160,180,0.3)', 1, H_SCALE);
-
-        // --- 9. Roadside trees ---
-        for (let d = 0.1; d < VIEW_DIST; d += 0.08) {
-            const idx = Math.round(d / SAMPLE_STEP);
+        // === 8. Roadside terrain details ===
+        // Light green grass patches on sides
+        for (let d = 0.05; d < VIEW_DIST; d += 0.06) {
+            const idx = Math.round((d + BEHIND_DIST) / SAMPLE_STEP);
             if (idx >= pts.length || idx < 0) continue;
             const pt = pts[idx];
             if (!pt || pt.scale < 0.05) continue;
-            const treeSize = 3 + 5 * pt.scale;
-            const offset = (ROAD_HW_KM + shoulderW + 0.008) * pt.scale * H_SCALE;
-            // Alternate left/right
+            const offset = (ROAD_HW_KM + shoulderW + 0.01) * pt.scale * H_SCALE;
+
+            // Draw small bush/tree shapes on sides
+            const bushSize = 4 + 8 * pt.scale;
             const side = (Math.floor(d * 100) % 2 === 0) ? 1 : -1;
-            const tx = pt.x + offset * side;
-            const br = 0.15 + pt.scale * 0.15;
-            ctx.fillStyle = `rgba(30, 70, 30, ${br})`;
+            const tx = pt.x + offset * side + (side * bushSize * 0.5);
+            const alpha = 0.3 + pt.scale * 0.4;
+
+            // Darker green circles for bushes/trees
+            ctx.fillStyle = `rgba(60, 130, 50, ${alpha})`;
             ctx.beginPath();
-            ctx.arc(tx, pt.y, treeSize, 0, Math.PI * 2);
+            ctx.arc(tx, pt.y, bushSize, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Lighter highlight
+            ctx.fillStyle = `rgba(90, 160, 70, ${alpha * 0.5})`;
+            ctx.beginPath();
+            ctx.arc(tx - bushSize * 0.2, pt.y - bushSize * 0.2, bushSize * 0.6, 0, Math.PI * 2);
             ctx.fill();
         }
 
-        // --- 10. Distance markers ---
-        for (let d = 0.5; d < VIEW_DIST; d += 0.5) {
-            const idx = Math.round(d / SAMPLE_STEP);
-            if (idx >= pts.length) continue;
-            const pt = pts[idx];
-            if (pt.scale < 0.08) continue;
-            const offset = (ROAD_HW_KM + shoulderW + 0.003) * pt.scale * H_SCALE;
-            const fs = Math.max(7, 9 * pt.scale);
-            ctx.font = `600 ${fs}px Inter, sans-serif`;
-            ctx.fillStyle = `rgba(100,120,150,${0.2 + pt.scale * 0.3})`;
-            ctx.textAlign = 'center';
-            const distLabel = d < 1 ? `${Math.round(d * 1000)}m` : `${d.toFixed(1)}km`;
-            ctx.fillText(distLabel, pt.x + offset, pt.y + 3);
-        }
-
-        // --- 11. Upcoming landmarks as highway signs ---
+        // === 9. Upcoming landmarks as Google Maps-style white cards ===
         for (const wp of ROUTE) {
             if (!wp.label) continue;
             const ahead = wp.dist - distanceTravelled;
@@ -358,101 +401,107 @@
             const p = project(loc.x, loc.y);
             if (!p || p.scale < 0.06) continue;
 
-            const sw = Math.max(70, 130 * p.scale);
-            const sh = Math.max(20, 32 * p.scale);
+            const sw = Math.max(80, 140 * p.scale);
+            const sh = Math.max(22, 34 * p.scale);
             const sx = p.x - sw / 2;
-            const sy = p.y - sh - 20 * p.scale;
+            const sy = p.y - sh - 22 * p.scale;
             const fs1 = Math.max(8, 12 * p.scale);
             const fs2 = Math.max(7, 10 * p.scale);
-            const r = 4 * p.scale;
+            const r = 6 * p.scale;
 
-            // Sign background (green)
-            ctx.fillStyle = 'rgba(21, 128, 61, 0.88)';
+            // White card background with shadow
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
+            ctx.shadowBlur = 8 * p.scale;
+            ctx.shadowOffsetY = 2 * p.scale;
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
             ctx.beginPath();
             ctx.roundRect(sx, sy, sw, sh, r);
             ctx.fill();
-            ctx.strokeStyle = 'rgba(255,255,255,0.3)';
-            ctx.lineWidth = 1;
-            ctx.stroke();
+            ctx.shadowBlur = 0;
+            ctx.shadowOffsetY = 0;
 
-            // Sign text
-            ctx.fillStyle = '#fff';
+            // Card text — dark text on white
+            ctx.fillStyle = '#333';
             ctx.font = `600 ${fs1}px Inter, Noto Sans TC, sans-serif`;
             ctx.textAlign = 'center';
             ctx.fillText(wp.label, p.x, sy + sh * 0.45);
 
-            // Distance
-            ctx.fillStyle = 'rgba(255,255,255,0.7)';
+            // Distance in muted color
+            ctx.fillStyle = '#666';
             ctx.font = `500 ${fs2}px Inter, sans-serif`;
             const distLabel = ahead < 1 ? `${Math.round(ahead * 1000)}m` : `${ahead.toFixed(1)}km`;
             ctx.fillText(distLabel, p.x, sy + sh * 0.82);
+
+            // Small connecting line from card to road
+            ctx.strokeStyle = 'rgba(0, 0, 0, 0.15)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(p.x, sy + sh);
+            ctx.lineTo(p.x, p.y);
+            ctx.stroke();
         }
 
-        // --- 12. Car indicator ---
-        // Glow
-        const glow = ctx.createRadialGradient(centerX, carY, 0, centerX, carY, 28);
-        glow.addColorStop(0, 'rgba(66, 133, 244, 0.45)');
+        // === 10. VEHICLE INDICATOR — Google Maps blue navigation arrow ===
+        // Glow circle
+        const glowR = 30;
+        const glow = ctx.createRadialGradient(centerX, carY, 0, centerX, carY, glowR);
+        glow.addColorStop(0, 'rgba(66, 133, 244, 0.35)');
+        glow.addColorStop(0.5, 'rgba(66, 133, 244, 0.12)');
         glow.addColorStop(1, 'rgba(66, 133, 244, 0)');
         ctx.fillStyle = glow;
         ctx.beginPath();
-        ctx.arc(centerX, carY, 28, 0, Math.PI * 2);
+        ctx.arc(centerX, carY, glowR, 0, Math.PI * 2);
         ctx.fill();
 
-        // Blue circle
-        ctx.fillStyle = '#4285f4';
+        // Blue navigation arrow (pointing up)
+        ctx.save();
+        ctx.translate(centerX, carY);
+
+        // Arrow shadow
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+        ctx.shadowBlur = 8;
+        ctx.shadowOffsetY = 2;
+
+        // Arrow body (blue)
+        ctx.fillStyle = '#4285F4';
         ctx.beginPath();
-        ctx.arc(centerX, carY, 11, 0, Math.PI * 2);
+        ctx.moveTo(0, -20);       // Top point
+        ctx.lineTo(-12, 10);      // Bottom left
+        ctx.lineTo(-4, 4);        // Inner left
+        ctx.lineTo(0, 6);         // Bottom center
+        ctx.lineTo(4, 4);         // Inner right
+        ctx.lineTo(12, 10);       // Bottom right
+        ctx.closePath();
         ctx.fill();
+
+        // White border
         ctx.strokeStyle = '#fff';
         ctx.lineWidth = 2.5;
         ctx.stroke();
 
-        // White arrow
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetY = 0;
+
+        // White center dot
         ctx.fillStyle = '#fff';
         ctx.beginPath();
-        ctx.moveTo(centerX, carY - 16);
-        ctx.lineTo(centerX - 7, carY - 2);
-        ctx.lineTo(centerX + 7, carY - 2);
-        ctx.closePath();
+        ctx.arc(0, -2, 3, 0, Math.PI * 2);
         ctx.fill();
 
-        // --- 13. Next road change indicator ---
-        let nextRoadName = null;
-        let nextRoadDist = 0;
-        const currentRoad = carPos.road;
-        for (let d = 0.1; d < 10; d += 0.1) {
-            const pos = getPositionAtDist(Math.min(distanceTravelled + d, TOTAL_DISTANCE));
-            if (pos.road !== currentRoad) {
-                nextRoadName = pos.road;
-                nextRoadDist = d;
-                break;
-            }
-        }
-        if (nextRoadName && nextRoadDist < 5) {
-            const nLabel = nextRoadDist < 1
-                ? `${Math.round(nextRoadDist * 1000)}m 後`
-                : `${nextRoadDist.toFixed(1)}km 後`;
-            const panelW = 160;
-            const panelH = 44;
-            const px = centerX - panelW / 2;
-            const py = horizonY - 45;
+        ctx.restore();
+    }
 
-            ctx.fillStyle = 'rgba(22, 24, 34, 0.9)';
-            ctx.beginPath();
-            ctx.roundRect(px, py, panelW, panelH, 10);
-            ctx.fill();
-            ctx.strokeStyle = 'rgba(66, 133, 244, 0.4)';
-            ctx.lineWidth = 1;
-            ctx.stroke();
-
-            ctx.fillStyle = 'rgba(66, 133, 244, 0.9)';
-            ctx.font = '500 10px Inter, Noto Sans TC, sans-serif';
-            ctx.textAlign = 'center';
-            ctx.fillText(nLabel, centerX, py + 16);
-            ctx.fillStyle = '#e8eaf0';
-            ctx.font = '700 13px Inter, Noto Sans TC, sans-serif';
-            ctx.fillText(`→ ${nextRoadName}`, centerX, py + 34);
-        }
+    /** Draw simple cloud shape */
+    function drawCloud(x, y, w, h) {
+        ctx.beginPath();
+        ctx.ellipse(x, y, w, h, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.ellipse(x - w * 0.5, y + h * 0.2, w * 0.5, h * 0.7, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.ellipse(x + w * 0.4, y + h * 0.1, w * 0.6, h * 0.8, 0, 0, Math.PI * 2);
+        ctx.fill();
     }
 
     /** Draw a lane line (solid or dashed) along the projected road points */
@@ -512,22 +561,22 @@
         const w = cw, h = ch;
         ctx.clearRect(0, 0, w, h);
 
-        // Background
+        // Background — Google Maps light style
         const bg = ctx.createRadialGradient(w * 0.3, h * 0.4, 0, w * 0.5, h * 0.5, w * 0.8);
-        bg.addColorStop(0, '#141628');
-        bg.addColorStop(1, '#0c0d14');
+        bg.addColorStop(0, '#e8f0e8');
+        bg.addColorStop(1, '#d4e4d0');
         ctx.fillStyle = bg;
         ctx.fillRect(0, 0, w, h);
 
-        // Grid
-        ctx.strokeStyle = 'rgba(42,45,64,0.25)';
+        // Grid (subtle)
+        ctx.strokeStyle = 'rgba(180, 200, 180, 0.3)';
         ctx.lineWidth = 0.5;
         for (let x = 0; x < w; x += 40) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
         for (let y = 0; y < h; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
 
-        // Route line (undriven)
+        // Route line (undriven) — grey
         ctx.beginPath();
-        ctx.strokeStyle = 'rgba(80,85,120,0.5)';
+        ctx.strokeStyle = 'rgba(150, 160, 150, 0.5)';
         ctx.lineWidth = 4;
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
@@ -537,21 +586,13 @@
         }
         ctx.stroke();
 
-        // Route line (driven)
+        // Route line (driven) — Google blue
         if (distanceTravelled > 0) {
-            const drivenG = ctx.createLinearGradient(
-                toCanvasCoord(ROUTE[0].lat, ROUTE[0].lng).x, toCanvasCoord(ROUTE[0].lat, ROUTE[0].lng).y,
-                toCanvasCoord(ROUTE[ROUTE.length - 1].lat, ROUTE[ROUTE.length - 1].lng).x,
-                toCanvasCoord(ROUTE[ROUTE.length - 1].lat, ROUTE[ROUTE.length - 1].lng).y
-            );
-            drivenG.addColorStop(0, '#6c63ff');
-            drivenG.addColorStop(0.5, '#00d2ff');
-            drivenG.addColorStop(1, '#00e676');
             ctx.beginPath();
-            ctx.strokeStyle = drivenG;
+            ctx.strokeStyle = '#4285F4';
             ctx.lineWidth = 5;
-            ctx.shadowColor = 'rgba(108,99,255,0.5)';
-            ctx.shadowBlur = 12;
+            ctx.shadowColor = 'rgba(66, 133, 244, 0.4)';
+            ctx.shadowBlur = 10;
             for (let i = 0; i < ROUTE.length; i++) {
                 if (ROUTE[i].dist > distanceTravelled) {
                     if (i > 0) { const ep = getPositionAtDist(distanceTravelled); const epc = toCanvasCoord(ep.lat, ep.lng); ctx.lineTo(epc.x, epc.y); }
@@ -569,17 +610,17 @@
             if (!wp.label) continue;
             const p = toCanvasCoord(wp.lat, wp.lng);
             ctx.beginPath();
-            ctx.fillStyle = wp.dist <= distanceTravelled ? '#00d2ff' : 'rgba(139,143,163,0.6)';
+            ctx.fillStyle = wp.dist <= distanceTravelled ? '#4285F4' : 'rgba(100,100,100,0.6)';
             ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
             ctx.fill();
             if (wp.dist <= distanceTravelled) {
                 ctx.beginPath();
-                ctx.fillStyle = 'rgba(0,210,255,0.2)';
+                ctx.fillStyle = 'rgba(66, 133, 244, 0.2)';
                 ctx.arc(p.x, p.y, 10, 0, Math.PI * 2);
                 ctx.fill();
             }
             ctx.font = '500 11px Inter, Noto Sans TC, sans-serif';
-            ctx.fillStyle = wp.dist <= distanceTravelled ? '#e8eaf0' : 'rgba(139,143,163,0.8)';
+            ctx.fillStyle = wp.dist <= distanceTravelled ? '#333' : 'rgba(80, 80, 80, 0.8)';
             ctx.textAlign = 'left';
             ctx.fillText(wp.label, p.x + 12, p.y + 4);
         }
@@ -588,22 +629,22 @@
         for (let d = 30; d < TOTAL_DISTANCE; d += 30) {
             const pos = getPositionAtDist(d);
             const p = toCanvasCoord(pos.lat, pos.lng);
-            ctx.fillStyle = 'rgba(80,85,120,0.4)';
+            ctx.fillStyle = 'rgba(100,100,100,0.35)';
             ctx.beginPath();
             ctx.arc(p.x, p.y, 2.5, 0, Math.PI * 2);
             ctx.fill();
             ctx.font = '400 9px Inter, sans-serif';
-            ctx.fillStyle = 'rgba(139,143,163,0.5)';
+            ctx.fillStyle = 'rgba(100,100,100,0.5)';
             ctx.textAlign = 'center';
             ctx.fillText(`${Math.round(d)}km`, p.x, p.y - 8);
         }
 
         // Vehicle
-        const carPos = getPositionAtDist(distanceTravelled);
-        const cp = toCanvasCoord(carPos.lat, carPos.lng);
+        const carPos2 = getPositionAtDist(distanceTravelled);
+        const cp = toCanvasCoord(carPos2.lat, carPos2.lng);
         const vGlow = ctx.createRadialGradient(cp.x, cp.y, 0, cp.x, cp.y, 25);
-        vGlow.addColorStop(0, 'rgba(0,210,255,0.4)');
-        vGlow.addColorStop(1, 'rgba(0,210,255,0)');
+        vGlow.addColorStop(0, 'rgba(66, 133, 244, 0.4)');
+        vGlow.addColorStop(1, 'rgba(66, 133, 244, 0)');
         ctx.fillStyle = vGlow;
         ctx.beginPath();
         ctx.arc(cp.x, cp.y, 25, 0, Math.PI * 2);
@@ -618,9 +659,9 @@
         ctx.save();
         ctx.translate(cp.x, cp.y);
         ctx.rotate(angle);
-        ctx.fillStyle = '#00d2ff';
-        ctx.shadowColor = 'rgba(0,210,255,0.7)';
-        ctx.shadowBlur = 15;
+        ctx.fillStyle = '#4285F4';
+        ctx.shadowColor = 'rgba(66, 133, 244, 0.5)';
+        ctx.shadowBlur = 12;
         ctx.beginPath();
         ctx.moveTo(12, 0); ctx.lineTo(-8, -7); ctx.lineTo(-5, 0); ctx.lineTo(-8, 7);
         ctx.closePath();
@@ -632,24 +673,24 @@
         ctx.fill();
         ctx.restore();
 
-        // Start/End
+        // Start/End markers
         const sp = toCanvasCoord(ROUTE[0].lat, ROUTE[0].lng);
-        ctx.fillStyle = '#00e676';
+        ctx.fillStyle = '#0d904f';
         ctx.beginPath();
         ctx.arc(sp.x, sp.y, 7, 0, Math.PI * 2);
         ctx.fill();
         ctx.font = '700 10px Inter, sans-serif';
-        ctx.fillStyle = '#00e676';
+        ctx.fillStyle = '#0d904f';
         ctx.textAlign = 'center';
         ctx.fillText('START', sp.x, sp.y - 13);
 
         const ep = toCanvasCoord(ROUTE[ROUTE.length - 1].lat, ROUTE[ROUTE.length - 1].lng);
-        ctx.fillStyle = '#ff5252';
+        ctx.fillStyle = '#EA4335';
         ctx.beginPath();
         ctx.arc(ep.x, ep.y, 7, 0, Math.PI * 2);
         ctx.fill();
         ctx.font = '700 10px Inter, sans-serif';
-        ctx.fillStyle = '#ff5252';
+        ctx.fillStyle = '#EA4335';
         ctx.textAlign = 'center';
         ctx.fillText('FINISH', ep.x, ep.y - 13);
     }
@@ -666,18 +707,86 @@
         }
     }
 
-    // ===================== HUD Update =====================
+    // ===================== HUD Update (Google Maps style) =====================
 
     function updateHUD() {
         const pos = getPositionAtDist(distanceTravelled);
         const remaining = Math.max(0, TOTAL_DISTANCE - distanceTravelled);
         const etaMin = Math.round((remaining / SPEED_KMHR) * 60);
+        const currentSpeed = running && !paused ? SPEED_KMHR : 0;
 
+        // Only show Google Maps HUD during follow mode
+        if (renderMode !== 'follow') {
+            if (hudTurnCard) hudTurnCard.classList.add('hidden');
+            if (hudOverlay) hudOverlay.classList.remove('visible');
+            if (hudSpeedCircle) hudSpeedCircle.classList.remove('visible');
+            // Still update legacy HUD
+            if (hudRoad) hudRoad.textContent = pos.road;
+            if (hudKm) {
+                hudKm.textContent = pos.road.includes('國道') ? `${pos.km}K` : `${Math.round(distanceTravelled)}km`;
+            }
+            if (hudSpeed) hudSpeed.textContent = currentSpeed;
+            if (hudEta) {
+                hudEta.textContent = etaMin > 60
+                    ? `${Math.floor(etaMin / 60)}時${etaMin % 60}分`
+                    : `${etaMin}分`;
+            }
+            if (hudDist) hudDist.textContent = `${remaining.toFixed(1)}`;
+            return;
+        }
+
+        // Update speed circle
+        if (hudSpeedVal) hudSpeedVal.textContent = currentSpeed;
+
+        // Update bottom info bar
+        if (hudBottomTime) {
+            hudBottomTime.textContent = etaMin > 60
+                ? `${Math.floor(etaMin / 60)} 時 ${etaMin % 60} 分`
+                : `${etaMin} 分`;
+        }
+        if (hudBottomDist) {
+            hudBottomDist.textContent = remaining >= 1
+                ? `${remaining.toFixed(1)} 公里`
+                : `${Math.round(remaining * 1000)} 公尺`;
+        }
+        if (hudBottomEta) {
+            const now = new Date();
+            now.setMinutes(now.getMinutes() + etaMin);
+            const hh = now.getHours().toString().padStart(2, '0');
+            const mm = now.getMinutes().toString().padStart(2, '0');
+            hudBottomEta.textContent = `${hh}:${mm}`;
+        }
+
+        // Update turn card
+        const turn = getNextTurn(distanceTravelled);
+        if (turn.roadName && turn.distance < 8) {
+            const arrow = getTurnArrow(turn.angle);
+            if (hudTurnIcon) hudTurnIcon.textContent = arrow.icon;
+            if (hudTurnDist) {
+                hudTurnDist.textContent = turn.distance < 1
+                    ? `${Math.round(turn.distance * 1000)} 公尺後`
+                    : `${turn.distance.toFixed(1)} 公里後`;
+            }
+            if (hudTurnRoad) hudTurnRoad.textContent = turn.roadName;
+            if (hudTurnCard) hudTurnCard.classList.remove('hidden');
+        } else {
+            // Show current road info when no upcoming turn
+            if (hudTurnIcon) hudTurnIcon.textContent = '⬆';
+            if (hudTurnDist) {
+                hudTurnDist.textContent = pos.road.includes('國道')
+                    ? `${pos.road} ${pos.km}K`
+                    : pos.road;
+            }
+            if (hudTurnRoad) hudTurnRoad.textContent = '持續直行';
+            if (hudTurnCard) hudTurnCard.classList.remove('hidden');
+        }
+
+        // Legacy HUD (keep for compatibility)
         if (hudRoad) hudRoad.textContent = pos.road;
         if (hudKm) {
             hudKm.textContent = pos.road.includes('國道') ? `${pos.km}K` : `${Math.round(distanceTravelled)}km`;
         }
-        if (hudSpeed) hudSpeed.textContent = running && !paused ? `${SPEED_KMHR}` : '0';
+        if (hudSpeed) hudSpeed.textContent = currentSpeed;
         if (hudEta) {
             hudEta.textContent = etaMin > 60
                 ? `${Math.floor(etaMin / 60)}時${etaMin % 60}分`
@@ -716,6 +825,12 @@
         if (hudSpeed) hudSpeed.textContent = '0';
         if (hudEta) hudEta.textContent = '0分';
         if (hudDist) hudDist.textContent = '0';
+        if (hudTurnIcon) hudTurnIcon.textContent = '🏁';
+        if (hudTurnDist) hudTurnDist.textContent = '已到達目的地';
+        if (hudTurnRoad) hudTurnRoad.textContent = '台北101';
+        if (hudSpeedVal) hudSpeedVal.textContent = '0';
+        if (hudBottomTime) hudBottomTime.textContent = '0 分';
+        if (hudBottomDist) hudBottomDist.textContent = '0 公尺';
         if (window.Socket) {
             window.Socket.sendMessage({
                 content: '🎉 已到達目的地：台北101！全程約 196 公里。📍 信義路五段',
@@ -725,6 +840,17 @@
     }
 
     // ===================== Controls =====================
+
+    function showGmapHud() {
+        if (hudOverlay) hudOverlay.classList.add('visible');
+        if (hudSpeedCircle) hudSpeedCircle.classList.add('visible');
+    }
+
+    function hideGmapHud() {
+        if (hudOverlay) hudOverlay.classList.remove('visible');
+        if (hudSpeedCircle) hudSpeedCircle.classList.remove('visible');
+        if (hudTurnCard) hudTurnCard.classList.add('hidden');
+    }
 
     function updateSimButton() {
         if (!simBtn) return;
@@ -758,6 +884,7 @@
         lastTimestamp = null;
         renderMode = 'follow'; // Switch to follow-cam view
         if (hudPanel) hudPanel.classList.add('visible');
+        showGmapHud();
         updateSimButton();
         animFrameId = requestAnimationFrame(tick);
         if (distanceTravelled === 0 && window.Socket) {
@@ -783,6 +910,7 @@
         renderMode = 'overview';
         if (animFrameId) cancelAnimationFrame(animFrameId);
         bounds = null;
+        hideGmapHud();
         updateSimButton();
         drawMap();
         updateHUD();
