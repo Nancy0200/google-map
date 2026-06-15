@@ -20,9 +20,9 @@
     <div id="app">
         <!-- ===== 全螢幕地圖 ===== -->
         <main id="nav-panel">
-            <!-- Navigation simulation canvas -->
+            <!-- Navigation simulation map container -->
             <div id="navsim-canvas-wrap">
-                <canvas id="navsim-canvas"></canvas>
+                <div id="navsim-map" style="width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 0; background-color: #eef3dc;"></div>
             </div>
 
             <!-- 彈幕層 -->
@@ -211,6 +211,8 @@
     <script src="{{ url_for('static', filename='js/cooldown.js') }}"></script>
     <script src="{{ url_for('static', filename='js/filter.js') }}"></script>
     <script src="{{ url_for('static', filename='js/socket.js') }}"></script>
+    <script src="https://maps.googleapis.com/maps/api/js?v=weekly&libraries=geometry,routes"></script>
+    <script src="{{ url_for('static', filename='js/real_route.js') }}"></script>
     <script src="{{ url_for('static', filename='js/navsim.js') }}"></script>
     <script src="{{ url_for('static', filename='js/danmaku.js') }}"></script>
     <script src="{{ url_for('static', filename='js/quickbtn.js') }}"></script>

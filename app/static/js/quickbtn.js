@@ -16,10 +16,10 @@
 
     // ===================== Location Helper =====================
 
-    /** Get current location string from NavSim, or default */
     function getLocationTag() {
-        if (window.NavSim) {
-            return window.NavSim.getCurrentLocation();
+        const road = document.getElementById('turn-road');
+        if (road && road.textContent && road.textContent !== '持續直行' && road.textContent !== '準備出發') {
+            return road.textContent;
         }
         return '未知位置';
     }

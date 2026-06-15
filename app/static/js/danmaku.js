@@ -55,7 +55,7 @@
     if (window.Socket) {
         window.Socket.onNewMessage((msg, isHistory) => {
             if (isHistory) return; // don't replay old danmaku
-            setTimeout(() => fire(msg), 2000);
+            setTimeout(() => fire(msg), 0);
         });
     }
 
