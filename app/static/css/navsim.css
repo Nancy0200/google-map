@@ -1,5 +1,5 @@
 /* ============================================================
-   Road Bulletin — Navigation Simulation Styles (Google Maps Style)
+   Road Bulletin — Navigation Simulation Styles (Leaflet + OSM)
    ============================================================ */
 
 /* --- Canvas Container --- */
@@ -15,9 +15,29 @@
     height: 100%;
 }
 
-/* 強制將 Google Maps 產生的圖例與控制項設定為不可點擊，避免覆蓋與攔截點擊事件 */
-.gm-style, .gmnoprint, .gm-style-cc, .gm-style-mtc {
-    pointer-events: none !important;
+/* --- Hide Leaflet default controls (we don't need them) --- */
+.leaflet-control-attribution,
+.leaflet-control-zoom {
+    display: none !important;
+}
+
+/* --- Custom Arrow Marker Icon --- */
+.nav-arrow-icon {
+    background: none !important;
+    border: none !important;
+}
+
+.nav-arrow-inner {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    color: #4285F4;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+    transition: transform 0.15s ease-out;
+    text-shadow: 0 0 8px rgba(66, 133, 244, 0.6);
 }
 
 /* --- Simulation Control Button (Top-Right) --- */
@@ -88,7 +108,7 @@
 }
 
 /* ============================================================
-   Google Maps Style Turn Instruction Card (Top)
+   Turn Instruction Card (Top) — Google Maps style
    ============================================================ */
 
 #nav-turn-card {
@@ -165,7 +185,7 @@
 
 #speed-circle {
     position: absolute;
-    bottom: 80px;
+    top: 90px;
     left: 16px;
     z-index: 55;
     width: 60px;
@@ -353,7 +373,8 @@
     #speed-circle {
         width: 52px;
         height: 52px;
-        bottom: 74px;
+        top: 80px;
+        left: 12px;
     }
 
     .speed-num {

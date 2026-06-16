@@ -5,7 +5,7 @@
 /* --- Quick Button Area (bottom-left of nav panel) --- */
 #quick-btn-area {
     position: absolute;
-    bottom: calc(var(--sheet-peek, 54px) + 80px);
+    bottom: 90px;
     left: 20px;
     display: flex;
     align-items: flex-end;
