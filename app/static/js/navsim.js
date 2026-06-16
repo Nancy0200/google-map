@@ -1,11 +1,11 @@
 /**
- * navsim.js — Leaflet + OpenStreetMap Navigation Simulation Engine
+ * navsim.js — MapLibre GL JS Navigation Simulation Engine
  *
- * Replaces the former Google Maps implementation.
- * Uses Leaflet.js with CartoDB Dark Matter tiles (no API key required).
+ * Uses MapLibre GL JS with CartoDB Voyager vector tiles.
+ * Vector tiles allow native map rotation with labels staying upright.
+ * No API key required.
  *
- * Exports via window.NavSim:
- *   - getCurrentLocation()  → returns current road name string
+ * Exports: window.NavSim, window.Navigation
  */
 
 (function () {
@@ -14,14 +14,14 @@
     // ===================== State =====================
     let map = null;
     let marker = null;
-    let routePolyline = null;
-    let routePath = [];       // Array of [lat, lng]
-    let totalDistance = 0;    // meters
+    let routeCoords = [];     // Array of [lat, lng] for internal geometry
+    let totalDistance = 0;
     let distanceTravelled = 0;
     let animFrameId = null;
     let lastTimestamp = null;
     let running = false;
     let paused = false;
+    let currentHeading = 0;
 
     // ===================== DOM Elements =====================
     const simBtn = document.getElementById('sim-start-btn');
@@ -41,11 +41,8 @@
     const SPEED_MS = SPEED_KMHR / 3.6;
 
     // ===================== Geometry Helpers =====================
-    // (Replace google.maps.geometry.spherical.*)
 
-    /** Convert degrees to radians. */
     function toRad(deg) { return deg * Math.PI / 180; }
-    /** Convert radians to degrees. */
     function toDeg(rad) { return rad * 180 / Math.PI; }
 
     /**
@@ -57,24 +54,27 @@
         const dLng = toRad(b[1] - a[1]);
         const sinLat = Math.sin(dLat / 2);
         const sinLng = Math.sin(dLng / 2);
-        const h = sinLat * sinLat + Math.cos(toRad(a[0])) * Math.cos(toRad(b[0])) * sinLng * sinLng;
+        const h = sinLat * sinLat +
+                  Math.cos(toRad(a[0])) * Math.cos(toRad(b[0])) *
+                  sinLng * sinLng;
         return 2 * R * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
     }
 
     /**
-     * Compute bearing (heading) from point a to point b. Returns degrees [0, 360).
+     * Compute bearing from point a to point b. Returns degrees [0, 360).
      */
     function computeBearing(a, b) {
         const lat1 = toRad(a[0]);
         const lat2 = toRad(b[0]);
         const dLng = toRad(b[1] - a[1]);
         const y = Math.sin(dLng) * Math.cos(lat2);
-        const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
+        const x = Math.cos(lat1) * Math.sin(lat2) -
+                  Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
         return (toDeg(Math.atan2(y, x)) + 360) % 360;
     }
 
     /**
-     * Interpolate between two [lat, lng] points by fraction t ∈ [0, 1].
+     * Interpolate between two [lat, lng] points by fraction t.
      */
     function interpolate(a, b, t) {
         return [
@@ -87,54 +87,38 @@
 
     function initMap() {
         const mapElement = document.getElementById('navsim-map');
-        if (!mapElement || typeof L === 'undefined') return;
+        if (!mapElement || typeof maplibregl === 'undefined') return;
 
-        const center = [24.1696768, 120.6976512];
+        const center = [120.6976512, 24.1696768]; // MapLibre uses [lng, lat]
 
-        map = L.map(mapElement, {
+        map = new maplibregl.Map({
+            container: mapElement,
+            style: 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
             center: center,
             zoom: 17,
-            zoomControl: false,
+            pitch: 0,
+            bearing: 0,
             attributionControl: false,
-            dragging: true,
-            scrollWheelZoom: true,
-            doubleClickZoom: false,
-            boxZoom: false,
-            keyboard: false,
-            touchZoom: true,
+            dragRotate: true,
         });
 
-        // CartoDB Voyager — bright, clean style similar to Google Maps
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-            maxZoom: 20,
-            subdomains: 'abcd',
-        }).addTo(map);
+        // Custom arrow marker — stays pointing UP on screen (viewport-aligned)
+        const arrowEl = document.createElement('div');
+        arrowEl.className = 'nav-arrow-icon';
+        arrowEl.innerHTML = '<div class="nav-arrow-inner"></div>';
 
-        // Custom arrow marker using a rotatable div icon
-        const arrowIcon = L.divIcon({
-            className: 'nav-arrow-icon',
-            html: '<div class="nav-arrow-inner">▲</div>',
-            iconSize: [32, 32],
-            iconAnchor: [16, 16],
+        marker = new maplibregl.Marker({
+            element: arrowEl,
+            rotationAlignment: 'viewport',
+            pitchAlignment: 'viewport',
+        }).setLngLat(center).addTo(map);
+
+        // Add route source/layer once the map style loads
+        map.on('load', () => {
+            requestRoute();
         });
-
-        marker = L.marker(center, {
-            icon: arrowIcon,
-            zIndexOffset: 1000,
-        }).addTo(map);
-
-        // Route polyline (will be set after requestRoute)
-        routePolyline = L.polyline([], {
-            color: '#4285F4',
-            weight: 6,
-            opacity: 0.85,
-            lineJoin: 'round',
-            lineCap: 'round',
-        }).addTo(map);
 
         if (simBtn) simBtn.addEventListener('click', toggleSim);
-
-        requestRoute();
     }
 
     // ===================== Route Loading =====================
@@ -145,51 +129,91 @@
             return;
         }
 
-        routePath = REAL_ROUTE.map(p => [p.lat, p.lng]);
-        routePolyline.setLatLngs(routePath);
-
-        // Total distance in meters (REAL_ROUTE.dist is in km)
+        // Internal: [lat, lng] for geometry math
+        routeCoords = REAL_ROUTE.map(p => [p.lat, p.lng]);
         totalDistance = REAL_ROUTE[REAL_ROUTE.length - 1].dist * 1000;
         distanceTravelled = 0;
+
+        // MapLibre GeoJSON: [lng, lat]
+        const geojsonCoords = REAL_ROUTE.map(p => [p.lng, p.lat]);
+
+        map.addSource('route', {
+            type: 'geojson',
+            data: {
+                type: 'Feature',
+                properties: {},
+                geometry: {
+                    type: 'LineString',
+                    coordinates: geojsonCoords,
+                }
+            }
+        });
+
+        // Outer glow
+        map.addLayer({
+            id: 'route-glow',
+            type: 'line',
+            source: 'route',
+            layout: { 'line-join': 'round', 'line-cap': 'round' },
+            paint: {
+                'line-color': '#4285F4',
+                'line-width': 12,
+                'line-opacity': 0.25,
+            }
+        });
+
+        // Main route line
+        map.addLayer({
+            id: 'route-line',
+            type: 'line',
+            source: 'route',
+            layout: { 'line-join': 'round', 'line-cap': 'round' },
+            paint: {
+                'line-color': '#4285F4',
+                'line-width': 6,
+                'line-opacity': 0.9,
+            }
+        });
 
         if (greenPanel) greenPanel.classList.remove('hidden');
         if (bottomPanel) bottomPanel.style.display = 'block';
 
         updateHUD();
 
-        marker.setLatLng(routePath[0]);
-        map.setView(routePath[0], 17);
+        // Set marker at start
+        marker.setLngLat([routeCoords[0][1], routeCoords[0][0]]);
 
-        // Fit route on map initially
-        if (routePath.length > 1) {
-            const bounds = L.latLngBounds(routePath);
-            map.fitBounds(bounds, { padding: [30, 30] });
-        }
+        // Fit the route into view
+        const bounds = geojsonCoords.reduce(
+            (b, c) => b.extend(c),
+            new maplibregl.LngLatBounds(geojsonCoords[0], geojsonCoords[0])
+        );
+        map.fitBounds(bounds, { padding: 40 });
     }
 
     // ===================== Position Helpers =====================
 
     function getPositionAtDistance(dist) {
-        if (routePath.length === 0) return null;
+        if (routeCoords.length === 0) return null;
         let d = 0;
-        for (let i = 0; i < routePath.length - 1; i++) {
-            const segLen = haversineDistance(routePath[i], routePath[i + 1]);
+        for (let i = 0; i < routeCoords.length - 1; i++) {
+            const segLen = haversineDistance(routeCoords[i], routeCoords[i + 1]);
             if (d + segLen >= dist) {
                 const fraction = (dist - d) / segLen;
-                return interpolate(routePath[i], routePath[i + 1], fraction);
+                return interpolate(routeCoords[i], routeCoords[i + 1], fraction);
             }
             d += segLen;
         }
-        return routePath[routePath.length - 1];
+        return routeCoords[routeCoords.length - 1];
     }
 
     function getHeadingAtDistance(dist) {
-        if (routePath.length === 0) return 0;
+        if (routeCoords.length === 0) return 0;
         let d = 0;
-        for (let i = 0; i < routePath.length - 1; i++) {
-            const segLen = haversineDistance(routePath[i], routePath[i + 1]);
+        for (let i = 0; i < routeCoords.length - 1; i++) {
+            const segLen = haversineDistance(routeCoords[i], routeCoords[i + 1]);
             if (d + segLen >= dist) {
-                return computeBearing(routePath[i], routePath[i + 1]);
+                return computeBearing(routeCoords[i], routeCoords[i + 1]);
             }
             d += segLen;
         }
@@ -212,7 +236,7 @@
     function updateHUD() {
         const remaining = totalDistance - distanceTravelled;
 
-        if (gpDistance && gpRoad && routePath.length > 0) {
+        if (gpDistance && gpRoad && routeCoords.length > 0) {
             if (remaining > 1000) {
                 gpDistance.textContent = (remaining / 1000).toFixed(1) + ' 公里後';
             } else {
@@ -233,7 +257,6 @@
                 now.getMinutes().toString().padStart(2, '0');
         }
 
-        // Update speed display
         if (speedValue) {
             speedValue.textContent = running && !paused ? SPEED_KMHR : 0;
         }
@@ -252,34 +275,31 @@
             distanceTravelled = totalDistance;
             running = false;
             updateSimButton();
-            // Hide speed circle
             if (speedCircle) speedCircle.classList.remove('visible');
         }
 
         const pos = getPositionAtDistance(distanceTravelled);
-        const heading = getHeadingAtDistance(distanceTravelled);
+        const targetHeading = getHeadingAtDistance(distanceTravelled);
+
+        // Smooth heading interpolation — gentle lerp avoids jitter
+        let diff = targetHeading - currentHeading;
+        while (diff > 180) diff -= 360;
+        while (diff < -180) diff += 360;
+        currentHeading += diff * 0.08;
+        currentHeading = ((currentHeading % 360) + 360) % 360;
 
         if (pos) {
-            marker.setLatLng(pos);
-            // Keep the arrow always pointing UP (forward)
-            // Instead, rotate the entire map so the road ahead is always "up"
-            const el = marker.getElement();
-            if (el) {
-                const inner = el.querySelector('.nav-arrow-inner');
-                if (inner) {
-                    // Arrow always points up (0 deg) — the map rotates instead
-                    inner.style.transform = 'rotate(0deg)';
-                }
-            }
-            
-            // Rotate the entire map container so the heading direction faces up
-            const mapContainer = document.getElementById('navsim-map');
-            if (mapContainer) {
-                mapContainer.style.transform = `rotate(${-heading}deg)`;
-                mapContainer.style.transformOrigin = 'center center';
-            }
-            
-            map.panTo(pos, { animate: true, duration: 0.3 });
+            const lngLat = [pos[1], pos[0]]; // Convert [lat,lng] → [lng,lat]
+            marker.setLngLat(lngLat);
+
+            // MapLibre natively rotates the map while keeping labels upright!
+            // Arrow stays pointing UP (viewport-aligned), map rotates underneath.
+            map.easeTo({
+                center: lngLat,
+                bearing: currentHeading,
+                duration: 100,
+                easing: function (t) { return t; }, // linear for continuous updates
+            });
         }
 
         updateHUD();
@@ -299,11 +319,10 @@
                 distanceTravelled = 0;
             }
             lastTimestamp = null;
-            // Show speed circle
+            // Initialize heading to current direction
+            currentHeading = getHeadingAtDistance(distanceTravelled);
             if (speedCircle) speedCircle.classList.add('visible');
-            // Show bottom bar
             if (bottomPanel) bottomPanel.classList.add('visible');
-            // Zoom in for navigation view
             map.setZoom(17);
             animFrameId = requestAnimationFrame(animate);
         } else if (!paused) {
@@ -340,26 +359,23 @@
             return getCurrentRoadName();
         },
         getCurrentSegment: function () {
-            const road = getCurrentRoadName();
-            return { road: road, city: '台中市' };
+            return { road: getCurrentRoadName(), city: '台中市' };
         },
     };
 
-    // Also expose as window.Navigation for copilot-chat.js compatibility
     window.Navigation = {
         getCurrentSegment: function () {
-            const road = getCurrentRoadName();
-            return { road: road, city: '台中市' };
+            return { road: getCurrentRoadName(), city: '台中市' };
         },
     };
 
     // ===================== Auto-init =====================
 
     window.addEventListener('load', () => {
-        if (typeof L !== 'undefined') {
+        if (typeof maplibregl !== 'undefined') {
             initMap();
         } else {
-            console.error('Leaflet not loaded!');
+            console.error('MapLibre GL JS not loaded!');
         }
     });
 })();

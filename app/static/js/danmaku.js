@@ -51,11 +51,11 @@
         el.addEventListener('animationend', () => el.remove());
     }
 
-    // Listen for messages — 2-second delay before danmaku appears
+    // Listen for messages — 1-second delay before danmaku appears
     if (window.Socket) {
         window.Socket.onNewMessage((msg, isHistory) => {
             if (isHistory) return; // don't replay old danmaku
-            setTimeout(() => fire(msg), 0);
+            setTimeout(() => fire(msg), 1000);
         });
     }
 

@@ -15,9 +15,12 @@
     height: 100%;
 }
 
-/* --- Hide Leaflet default controls (we don't need them) --- */
-.leaflet-control-attribution,
-.leaflet-control-zoom {
+/* --- Hide MapLibre default controls --- */
+.maplibregl-ctrl-attrib,
+.maplibregl-ctrl-bottom-left,
+.maplibregl-ctrl-bottom-right,
+.maplibregl-ctrl-top-left,
+.maplibregl-ctrl-top-right {
     display: none !important;
 }
 
@@ -33,11 +36,20 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 22px;
-    color: #4285F4;
-    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
-    transition: transform 0.15s ease-out;
-    text-shadow: 0 0 8px rgba(66, 133, 244, 0.6);
+    transition: transform 0.3s ease-out;
+}
+
+/* Pure CSS triangle pointing up */
+.nav-arrow-inner::after {
+    content: '';
+    display: block;
+    width: 0;
+    height: 0;
+    border-left: 10px solid transparent;
+    border-right: 10px solid transparent;
+    border-bottom: 20px solid #4285F4;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4))
+           drop-shadow(0 0 8px rgba(66, 133, 244, 0.5));
 }
 
 /* --- Simulation Control Button (Top-Right) --- */
