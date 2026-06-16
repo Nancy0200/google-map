@@ -10,11 +10,11 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/quickbtn.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/danmaku.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/copilot-chat.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/navsim.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', v=5) }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/navsim.css', v=5) }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/danmaku.css', v=5) }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/quickbtn.css', v=5) }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/copilot-chat.css', v=5) }}">
 </head>
 <body>
     <div id="app">
@@ -145,11 +145,12 @@
                 </div>
             </div>
 
-            <!-- 冷卻提示 -->
-            <div id="cooldown-toast" class="hidden">
-                <span id="cooldown-msg">發送過於頻繁，請稍候 <span id="cooldown-sec">0</span> 秒</span>
-            </div>
         </main>
+
+        <!-- 冷卻提示 (移到最外層確保不被遮擋) -->
+        <div id="cooldown-toast" class="hidden" style="z-index: 99999;">
+            <span id="cooldown-msg">發送過於頻繁，請稍候 <span id="cooldown-sec">0</span> 秒</span>
+        </div>
 
         <!-- ===== 聊天室 Toggle ===== -->
         <button id="copilot-toggle" title="聊天室">
@@ -157,7 +158,7 @@
             <span class="toggle-icon">💬</span>
         </button>
 
-        <!-- ===== 聊天室 (底部面板) ===== -->
+        <!-- ===== 聊天室 (底部面板) -->
         <section id="copilot-panel">
             <header id="copilot-header">
                 <div class="chat-avatar">💬</div>
@@ -191,7 +192,7 @@
                     <input type="text" id="copilot-input" placeholder="輸入訊息..." maxlength="100" autocomplete="off">
                     <span id="copilot-char-count">0/100</span>
                 </div>
-                <button id="copilot-send" class="disabled" title="送出訊息" onclick="console.log('>>> INLINE ONCLICK FIRED! content=' + document.getElementById('copilot-input').value);">
+                <button id="copilot-send" class="disabled" title="送出訊息">
                     <span class="send-icon">➤</span>
                 </button>
             </footer>
@@ -207,16 +208,16 @@
     <!-- SocketIO client library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
     <!-- App modules -->
-    <script src="{{ url_for('static', filename='js/speed.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/cooldown.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/filter.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/socket.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/speed.js', v=5) }}"></script>
+    <script src="{{ url_for('static', filename='js/cooldown.js', v=5) }}"></script>
+    <script src="{{ url_for('static', filename='js/filter.js', v=5) }}"></script>
+    <script src="{{ url_for('static', filename='js/socket.js', v=5) }}"></script>
     <script src="https://maps.googleapis.com/maps/api/js?v=weekly&libraries=geometry,routes"></script>
-    <script src="{{ url_for('static', filename='js/real_route.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/navsim.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/danmaku.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/quickbtn.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/copilot-chat.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/real_route.js', v=5) }}"></script>
+    <script src="{{ url_for('static', filename='js/navsim.js', v=5) }}"></script>
+    <script src="{{ url_for('static', filename='js/danmaku.js', v=5) }}"></script>
+    <script src="{{ url_for('static', filename='js/quickbtn.js', v=5) }}"></script>
+    <script src="{{ url_for('static', filename='js/copilot-chat.js', v=5) }}"></script>
     <script>
         document.addEventListener('click', function(e) {
             const sendBtn = e.target.closest('#copilot-send');

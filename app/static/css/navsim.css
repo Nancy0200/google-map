@@ -15,6 +15,11 @@
     height: 100%;
 }
 
+/* 強制將 Google Maps 產生的圖例與控制項設定為不可點擊，避免覆蓋與攔截點擊事件 */
+.gm-style, .gmnoprint, .gm-style-cc, .gm-style-mtc {
+    pointer-events: none !important;
+}
+
 /* --- Simulation Control Button (Top-Right) --- */
 #sim-start-btn {
     position: absolute;

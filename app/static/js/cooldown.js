@@ -12,7 +12,7 @@
 
 (function () {
     const STORAGE_KEY = 'rb_cooldown_timestamps';
-    const WINDOW_MS = 60 * 1000; // 60 seconds
+    const WINDOW_MS = 5 * 1000; // 5 seconds
     const MAX_SENDS = 3;
 
     let toastTimer = null;

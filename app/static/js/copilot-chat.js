@@ -356,23 +356,24 @@
     // ===================== Send Message =====================
 
     function sendMessage() {
-        console.log('>>> sendMessage EXECUTING! <<<');
-        // --- DIAGNOSTIC ALERTS ---
-        if (!inputEl) { console.error('錯誤: 找不到輸入框'); return; }
-        const content = inputEl.value.trim();
-        if (!content) { console.error('錯誤: 輸入內容為空'); return; }
-        if (content.length > MAX_CHARS) { console.error('錯誤: 超過字數限制'); return; }
+        const currentInput = document.getElementById('copilot-input');
+        if (!currentInput) { alert('錯誤: 找不到輸入框'); return; }
+        const content = currentInput.value.trim();
+        if (!content) { alert('錯誤: 輸入內容為空'); return; }
+        if (content.length > MAX_CHARS) { alert('錯誤: 超過字數限制'); return; }
         
         // Content filter check
         if (window.ContentFilter) {
             const result = window.ContentFilter.check(content);
             if (!result.ok) {
+                alert('被過濾阻擋: ' + result.reason);
                 showFilterWarning(result.reason);
                 return;
             }
         }
 
         if (window.Cooldown && !window.Cooldown.canSend()) {
+            alert('觸發防洗版冷卻限制！');
             window.Cooldown.showToast();
             return;
         }
@@ -382,8 +383,12 @@
         // Append current location from navigation simulation
         let fullContent = content;
         if (window.NavSim) {
-            const loc = window.NavSim.getCurrentLocation();
-            fullContent = `${content} 📍 ${loc}`;
+            try {
+                const loc = window.NavSim.getCurrentLocation();
+                fullContent = `${content} 📍 ${loc}`;
+            } catch (err) {
+                // Ignore errors
+            }
         }
 
         sentMessageContents.add(fullContent);
@@ -402,12 +407,14 @@
                 });
             } catch (err) {
                 alert('發送失敗 (Socket 錯誤): ' + err.message);
+                return;
             }
         } else {
             alert('發送失敗: Socket 連線尚未建立');
+            return;
         }
 
-        inputEl.value = '';
+        currentInput.value = '';
         updateCharCount();
         updateSendButton();
 
@@ -418,10 +425,52 @@
     }
 
     if (sendBtn) {
+        const handleSend = (e) => {
+            if (e) e.preventDefault();
+            
+            // 強制從 DOM 重新抓取，避免 closure 參照到舊的元素
+            const currentInput = document.getElementById('copilot-input');
+            if (!currentInput) {
+                alert('錯誤：DOM 找不到 #copilot-input');
+                return;
+            }
+
+            const rawValue = currentInput.value;
+            const content = rawValue.trim();
+            
+            // --- 終極除錯 ---
+            // alert('按鈕已觸發！當前抓到的文字長度：' + content.length + '，內容：[' + content + ']');
+            
+            if (content !== '') {
+                sendMessage();
+            } else {
+                currentInput.focus();
+                sendBtn.style.transform = 'scale(0.9)';
+                setTimeout(() => sendBtn.style.transform = '', 150);
+            }
+        };
+
+        // 終極解法：使用 touchend 攔截，因為 touchstart 會在輸入法選字階段就觸發，且 click 會因為 Google Map 導致畫面位移而失效
+        sendBtn.addEventListener('touchend', (e) => {
+            if (e.cancelable) {
+                e.preventDefault(); // 阻止原生的 click 行為，避免重複觸發或被取消
+            }
+            
+            // 強制讓輸入框失去焦點，這會迫使手機的中文輸入法將「正在選字」的虛線文字真正提交到 input.value
+            const currentInput = document.getElementById('copilot-input');
+            if (currentInput) {
+                currentInput.blur();
+            }
+
+            // 給予 100 毫秒讓瀏覽器完成 DOM 更新與 value 賦值
+            setTimeout(() => {
+                handleSend(null);
+            }, 100);
+        }, { passive: false });
+
+        // 桌面版或沒有觸控的環境，依然保留 click
         sendBtn.addEventListener('click', (e) => {
-            console.log('>>> SEND BTN LISTENER FIRED <<<');
-            e.preventDefault();
-            sendMessage();
+            handleSend(e);
         });
     }
 

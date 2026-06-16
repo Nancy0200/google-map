@@ -110,11 +110,17 @@ def handle_post_message(data):
     speed_level = data.get("speed_level")
     road_name = data.get("road_name")
     road_city = data.get("road_city")
-    msg = create_message(content, category, speed_level)
-    # Attach road info to broadcast payload so all clients can display it
-    msg["road_name"] = road_name
-    msg["road_city"] = road_city
-    emit("new_message", msg, broadcast=True)
+    
+    try:
+        msg = create_message(content, category, speed_level)
+        # Attach road info to broadcast payload so all clients can display it
+        msg["road_name"] = road_name
+        msg["road_city"] = road_city
+        emit("new_message", msg, broadcast=True)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        emit("error", {"message": f"伺服器資料庫錯誤: {str(e)}"})
 
 
 @socketio.on("request_history")
