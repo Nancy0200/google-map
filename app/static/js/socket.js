@@ -37,6 +37,7 @@
     // --- Error ---
     socket.on('error', (data) => {
         console.warn('[SocketIO] Error:', data.message);
+        alert('發送失敗: ' + (data.message || '未知錯誤'));
     });
 
     // --- Public API ---

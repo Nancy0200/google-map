@@ -433,6 +433,7 @@
 #copilot-input-wrapper {
     flex: 1;
     position: relative;
+    z-index: 10;
 }
 
 #copilot-input {
@@ -451,6 +452,9 @@
     min-height: 40px;
     max-height: 100px;
     line-height: 1.4;
+    pointer-events: auto !important;
+    user-select: text !important;
+    z-index: 10;
 }
 
 #copilot-input:focus {
@@ -496,6 +500,8 @@
     flex-shrink: 0;
     transition: all 0.2s ease;
     box-shadow: 0 2px 12px rgba(0, 210, 255, 0.25);
+    pointer-events: auto !important;
+    z-index: 10;
 }
 
 #copilot-send:hover {
@@ -507,7 +513,7 @@
     transform: scale(0.92);
 }
 
-#copilot-send:disabled {
+#copilot-send.disabled {
     opacity: 0.4;
     cursor: not-allowed;
     transform: none;
@@ -520,8 +526,8 @@
     line-height: 1;
 }
 
-#copilot-send:hover:not(:disabled) .send-icon {
-    transform: translateX(1px) translateY(-1px);
+#copilot-send:hover:not(.disabled) .send-icon {
+    transform: translate(2px, -2px);
 }
 
 /* --- Quick Tag Buttons --- */

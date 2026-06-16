@@ -356,11 +356,13 @@
     // ===================== Send Message =====================
 
     function sendMessage() {
-        if (!inputEl) return;
+        console.log('>>> sendMessage EXECUTING! <<<');
+        // --- DIAGNOSTIC ALERTS ---
+        if (!inputEl) { console.error('錯誤: 找不到輸入框'); return; }
         const content = inputEl.value.trim();
-        if (!content) return;
-        if (content.length > MAX_CHARS) return;
-
+        if (!content) { console.error('錯誤: 輸入內容為空'); return; }
+        if (content.length > MAX_CHARS) { console.error('錯誤: 超過字數限制'); return; }
+        
         // Content filter check
         if (window.ContentFilter) {
             const result = window.ContentFilter.check(content);
@@ -390,13 +392,19 @@
         const roadSeg = getCurrentRoadTag();
 
         if (window.Socket) {
-            window.Socket.sendMessage({
-                content: fullContent,
-                category: 'other',
-                speed_level: null,
-                road_name: roadSeg ? roadSeg.road : null,
-                road_city: roadSeg ? roadSeg.city : null,
-            });
+            try {
+                window.Socket.sendMessage({
+                    content: fullContent,
+                    category: 'other',
+                    speed_level: null,
+                    road_name: roadSeg ? roadSeg.road : null,
+                    road_city: roadSeg ? roadSeg.city : null,
+                });
+            } catch (err) {
+                alert('發送失敗 (Socket 錯誤): ' + err.message);
+            }
+        } else {
+            alert('發送失敗: Socket 連線尚未建立');
         }
 
         inputEl.value = '';
@@ -410,11 +418,16 @@
     }
 
     if (sendBtn) {
-        sendBtn.addEventListener('click', sendMessage);
+        sendBtn.addEventListener('click', (e) => {
+            console.log('>>> SEND BTN LISTENER FIRED <<<');
+            e.preventDefault();
+            sendMessage();
+        });
     }
 
     if (inputEl) {
         inputEl.addEventListener('keydown', (e) => {
+            if (e.isComposing) return; // Prevent sending while composing Chinese
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 sendMessage();
@@ -445,7 +458,11 @@
     function updateSendButton() {
         if (!sendBtn || !inputEl) return;
         const content = inputEl.value.trim();
-        sendBtn.disabled = !content || content.length > MAX_CHARS;
+        if (!content || content.length > MAX_CHARS) {
+            sendBtn.classList.add('disabled');
+        } else {
+            sendBtn.classList.remove('disabled');
+        }
     }
 
     // Initial state

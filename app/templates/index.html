@@ -191,7 +191,7 @@
                     <input type="text" id="copilot-input" placeholder="輸入訊息..." maxlength="100" autocomplete="off">
                     <span id="copilot-char-count">0/100</span>
                 </div>
-                <button id="copilot-send" disabled title="送出訊息">
+                <button id="copilot-send" class="disabled" title="送出訊息" onclick="console.log('>>> INLINE ONCLICK FIRED! content=' + document.getElementById('copilot-input').value);">
                     <span class="send-icon">➤</span>
                 </button>
             </footer>
@@ -217,5 +217,17 @@
     <script src="{{ url_for('static', filename='js/danmaku.js') }}"></script>
     <script src="{{ url_for('static', filename='js/quickbtn.js') }}"></script>
     <script src="{{ url_for('static', filename='js/copilot-chat.js') }}"></script>
+    <script>
+        document.addEventListener('click', function(e) {
+            const sendBtn = e.target.closest('#copilot-send');
+            if (sendBtn) {
+                console.log('Global listener caught send button click');
+                // Ensure the JS is loaded
+                if (!window.CopilotChat) {
+                    alert('嚴重錯誤：copilot-chat.js 未載入！');
+                }
+            }
+        });
+    </script>
 </body>
 </html>
