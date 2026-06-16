@@ -23,6 +23,12 @@
     let paused = false;
     let currentHeading = 0;
 
+    // Speed fluctuation state
+    const BASE_SPEED = 40;
+    let currentSpeedKmhr = 0;
+    let targetSpeedKmhr = BASE_SPEED;
+    let lastSpeedChangeTime = 0;
+
     // ===================== DOM Elements =====================
     const simBtn = document.getElementById('sim-start-btn');
     const simBtnLabel = simBtn ? simBtn.querySelector('.sim-btn-label') : null;
@@ -37,8 +43,8 @@
     const speedCircle = document.getElementById('speed-circle');
     const speedValue = document.getElementById('speed-value');
 
-    const SPEED_KMHR = 40;
-    const SPEED_MS = SPEED_KMHR / 3.6;
+    const BASE_SPEED_KMHR = 40;
+    const BASE_SPEED_MS = BASE_SPEED_KMHR / 3.6;
 
     // ===================== Geometry Helpers =====================
 
@@ -247,7 +253,9 @@
 
         if (bpDist && bpTime && bpEta) {
             bpDist.textContent = (remaining / 1000).toFixed(1) + ' 公里';
-            const remainingSec = remaining / SPEED_MS;
+            
+            // Use base speed for ETA to avoid fluctuating arrival times
+            const remainingSec = remaining / BASE_SPEED_MS;
             bpTime.textContent = Math.ceil(remainingSec / 60) + ' 分';
 
             const now = new Date();
@@ -258,7 +266,7 @@
         }
 
         if (speedValue) {
-            speedValue.textContent = running && !paused ? SPEED_KMHR : 0;
+            speedValue.textContent = running && !paused ? Math.round(currentSpeedKmhr) : 0;
         }
     }
 
@@ -266,11 +274,38 @@
 
     function animate(timestamp) {
         if (!running || paused) return;
-        if (!lastTimestamp) lastTimestamp = timestamp;
+        if (!lastTimestamp) {
+            lastTimestamp = timestamp;
+            lastSpeedChangeTime = timestamp;
+        }
         const dt = (timestamp - lastTimestamp) / 1000;
         lastTimestamp = timestamp;
 
-        distanceTravelled += SPEED_MS * dt;
+        // Context-aware speed fluctuation (evaluate every 1 second)
+        if (timestamp - lastSpeedChangeTime > 1000) {
+            // Look ahead 40 meters to anticipate curves/intersections earlier
+            const currentHdg = getHeadingAtDistance(distanceTravelled);
+            const futureHdg = getHeadingAtDistance(distanceTravelled + 40);
+            
+            let diff = Math.abs(futureHdg - currentHdg);
+            while (diff > 180) diff = Math.abs(diff - 360);
+            
+            if (diff > 15) {
+                // Approaching a turn -> target 25 km/h
+                targetSpeedKmhr = 25;
+            } else {
+                // Straight ahead -> maintain 55+ (55 to 60 km/h)
+                targetSpeedKmhr = 55 + Math.random() * 5;
+            }
+            lastSpeedChangeTime = timestamp;
+        }
+
+        // Smoothly interpolate current speed towards target speed
+        // Use a smaller factor (0.015) for a very gradual, realistic acceleration/deceleration
+        currentSpeedKmhr += (targetSpeedKmhr - currentSpeedKmhr) * 0.015;
+        const currentSpeedMs = currentSpeedKmhr / 3.6;
+
+        distanceTravelled += currentSpeedMs * dt;
         if (distanceTravelled >= totalDistance) {
             distanceTravelled = totalDistance;
             running = false;
@@ -321,6 +356,10 @@
             lastTimestamp = null;
             // Initialize heading to current direction
             currentHeading = getHeadingAtDistance(distanceTravelled);
+            // Initialize speed when starting/resuming
+            currentSpeedKmhr = BASE_SPEED_KMHR;
+            targetSpeedKmhr = BASE_SPEED_KMHR;
+            
             if (speedCircle) speedCircle.classList.add('visible');
             if (bottomPanel) bottomPanel.classList.add('visible');
             map.setZoom(17);
