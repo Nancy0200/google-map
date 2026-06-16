@@ -10,7 +10,7 @@
 
     const TRACK_COUNT = 6;       // number of vertical "lanes"
     const MIN_DURATION = 8;      // seconds (fastest)
-    const MAX_DURATION = 14;     // seconds (slowest)
+    const MAX_DURATION = 12;     // seconds (slowest)
     const trackLastTime = new Array(TRACK_COUNT).fill(0);
 
     /** Pick a track that isn't too recently used. */
@@ -39,7 +39,7 @@
         }
 
         const track = pickTrack();
-        const topPct = 8 + (track / TRACK_COUNT) * 65; // spread across 8%–73% height
+        const topPct = 22 + (track / TRACK_COUNT) * 26; // spread across 22%–48% height (below speed circle)
         el.style.top = topPct + '%';
 
         const duration = MIN_DURATION + Math.random() * (MAX_DURATION - MIN_DURATION);
@@ -51,13 +51,24 @@
         el.addEventListener('animationend', () => el.remove());
     }
 
-    // Listen for messages — 1-second delay before danmaku appears
+    // Deduplication: prevent same message from firing danmaku twice
+    const recentFired = new Set();
+
+    function fireOnce(msg) {
+        const key = msg.content;
+        if (recentFired.has(key)) return; // already fired
+        recentFired.add(key);
+        setTimeout(() => recentFired.delete(key), 3000); // cleanup after 3s
+        fire(msg);
+    }
+
+    // Listen for messages from server broadcast — fire immediately
     if (window.Socket) {
         window.Socket.onNewMessage((msg, isHistory) => {
-            if (isHistory) return; // don't replay old danmaku
-            setTimeout(() => fire(msg), 1000);
+            if (isHistory) return;
+            fireOnce(msg);
         });
     }
 
-    window.Danmaku = { fire };
+    window.Danmaku = { fire: fireOnce };
 })();

@@ -403,6 +403,14 @@
                 road_name: roadSeg ? roadSeg.road : null,
                 road_city: roadSeg ? roadSeg.city : null,
             });
+
+            // 發送後立即觸發彈幕飄過畫面
+            if (window.Danmaku) {
+                window.Danmaku.fire({
+                    content: fullContent,
+                    category: 'other',
+                });
+            }
         }
 
         currentInput.value = '';
